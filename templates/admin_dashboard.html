@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Dashboard - Railway Management System{% endblock %}
+
+{% block content %}
+<div class="admin-dashboard">
+    <h2>Admin Dashboard</h2>
+    
+    <div class="admin-stats">
+        <div class="stat-card">
+            <h3>Total Trains</h3>
+            <div class="stat-value">{{ trains|length }}</div>
+        </div>
+        
+        <div class="stat-card">
+            <h3>Active Tickets</h3>
+            <div class="stat-value">{{ trains|sum(attribute='active_tickets') }}</div>
+        </div>
+        
+        <div class="stat-card">
+            <h3>Waitlisted Tickets</h3>
+            <div class="stat-value">{{ trains|sum(attribute='waitlisted_tickets') }}</div>
+        </div>
+    </div>
+    
+    <div class="admin-section">
+        <h3>Train Overview</h3>
+        
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Train ID</th>
+                    <th>Train Name</th>
+                    <th>Route</th>
+                    <th>Schedules</th>
+                    <th>Active Tickets</th>
+                    <th>Waitlist</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for train in trains %}
+                    <tr>
+                        <td>{{ train.train_id }}</td>
+                        <td>{{ train.train_name }}</td>
+                        <td>{{ train.start_station }} to {{ train.end_station }}</td>
+                        <td>{{ train.schedule_count }}</td>
+                        <td>{{ train.active_tickets }}</td>
+                        <td>{{ train.waitlisted_tickets }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

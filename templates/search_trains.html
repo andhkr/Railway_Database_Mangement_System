@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+
+{% block title %}Search Trains - Railway Management System{% endblock %}
+
+{% block content %}
+<div class="search-container">
+    <h2>Search Available Trains</h2>
+    
+    <form action="{{ url_for('search_trains') }}" method="post" class="search-form">
+        <div class="form-row">
+            <div class="form-group">
+                <label for="start_station">From:</label>
+                <select id="start_station" name="start_station" required>
+                    <option value="">Select Station</option>
+                    {% for station in stations %}
+                        <option value="{{ station.name }}" {% if search_params and search_params.start_station == station.name %}selected{% endif %}>
+                            {{ station.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="end_station">To:</label>
+                <select id="end_station" name="end_station" required>
+                    <option value="">Select Station</option>
+                    {% for station in stations %}
+                        <option value="{{ station.name }}" {% if search_params and search_params.end_station == station.name %}selected{% endif %}>
+                            {{ station.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        
+        <div class="form-row">
+            <div class="form-group">
+                <label for="journey_date">Journey Date:</label>
+                <input type="date" id="journey_date" name="journey_date" min="{{ today_date }}" required 
+                       value="{{ search_params.journey_date if search_params else '' }}">
+            </div>
+            
+            <div class="form-group">
+                <label for="preferred_class">Preferred Class (Optional):</label>
+                <select id="preferred_class" name="preferred_class">
+                    <option value="">Any Class</option>
+                    {% for class_info in train_classes %}
+                        <option value="{{ class_info.class }}" {% if search_params and search_params.preferred_class == class_info.class %}selected{% endif %}>
+                            {{ class_info.class }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        
+        <button type="submit" class="btn btn-primary">Search Trains</button>
+    </form>
+    
+    {% if trains %}
+        <div class="search-results">
+            <h3>Available Trains</h3>
+            
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Train</th>
+                        <th>Departure</th>
+                        <th>Arrival</th>
+                        <th>Travel Time</th>
+                        <th>Available Seats</th>
+                        <th>Fare</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for train in trains %}
+                        <tr>
+                            <td>{{ train.train_name }}</td>
+                            <td>{{ train.departure_time }}</td>
+                            <td>{{ train.arrival_time }}</td>
+                            <td>{{ train.travel_time }}</td>
+                            <td>{{ train.available_seats if train.available_seats > 0 else 'Waitlist' }}</td>
+                            <td>₹{{ train.fare }}</td>
+                            <td>
+                                <a href="{{ url_for('book_ticket', train_id=train.train_id) }}?date={{ search_params.journey_date }}&from={{ search_params.start_station }}&to={{ search_params.end_station }}&class={{ search_params.preferred_class }}" 
+                                   class="btn btn-small">Book</a>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% elif search_params %}
+        <div class="no-results">
+            <p>No trains found for the selected criteria. Please try different stations or dates.</p>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Prevent selecting the same station for departure and arrival
+    document.getElementById('start_station').addEventListener('change', function() {
+        const endStation = document.getElementById('end_station');
+        const selectedValue = this.value;
+        
+        for (let i = 0; i < endStation.options.length; i++) {
+            if (endStation.options[i].value === selectedValue) {
+                endStation.options[i].disabled = true;
+            } else {
+                endStation.options[i].disabled = false;
+            }
+        }
+    });
+</script>
+{% endblock %}

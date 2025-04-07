@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+
+{% block title %}Book Ticket - Railway Management System{% endblock %}
+
+{% block content %}
+<div class="booking-container">
+    <h2>Book Train Ticket</h2>
+    
+    <form action="{{ url_for('book_ticket', train_id=train_id) }}" method="post" class="booking-form">
+        <div class="form-section">
+            <h3>Journey Details</h3>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="start_station">From:</label>
+                    <select id="start_station" name="start_station" required>
+                        <option value="">Select Station</option>
+                        {% for station in stations %}
+                            <option value="{{ station.name }}" {% if request.args.get('from') == station.name %}selected{% endif %}>
+                                {{ station.name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="end_station">To:</label>
+                    <select id="end_station" name="end_station" required>
+                        <option value="">Select Station</option>
+                        {% for station in stations %}
+                            <option value="{{ station.name }}" {% if request.args.get('to') == station.name %}selected{% endif %}>
+                                {{ station.name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="journey_date">Journey Date:</label>
+                    <input type="date" id="journey_date" name="journey_date" required value="{{ request.args.get('date', '') }}">
+                </div>
+                
+                <div class="form-group">
+                    <label for="class">Class:</label>
+                    <select id="class" name="class" required>
+                        {% for class_info in train_classes %}
+                            <option value="{{ class_info.class }}" {% if request.args.get('class') == class_info.class %}selected{% endif %}>
+                                {{ class_info.class }} (₹{{ class_info.price }} per km)
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+        </div>
+        
+        <div class="form-section">
+            <h3>Passenger Details</h3>
+            
+            <div class="form-group">
+                <label for="passenger_name">Full Name:</label>
+                <input type="text" id="passenger_name" name="passenger_name" required>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="passenger_age">Age:</label>
+                    <input type="number" id="passenger_age" name="passenger_age" min="1" max="120" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="passenger_gender">Gender:</label>
+                    <select id="passenger_gender" name="passenger_gender" required>
+                        <option value="">Select Gender</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="passenger_phone">Phone Number:</label>
+                <input type="tel" id="passenger_phone" name="passenger_phone" required>
+            </div>
+        </div>
+        
+        <div class="form-section">
+            <h3>Terms & Conditions</h3>
+            <div class="terms">
+                <label>
+                    <input type="checkbox" required>
+                    I agree to the terms and conditions of the railway booking system
+                </label>
+                <p class="terms-summary">
+                    By booking this ticket, you agree to the cancellation policy, refund rules, 
+                    and other terms as per railway guidelines.
+                </p>
+            </div>
+        </div>
+        
+        <button type="submit" class="btn btn-primary">Confirm Booking</button>
+    </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Prevent selecting the same station for departure and arrival
+    document.getElementById('start_station').addEventListener('change', function() {
+        const endStation = document.getElementById('end_station');
+        const selectedValue = this.value;
+        
+        for (let i = 0; i < endStation.options.length; i++) {
+            if (endStation.options[i].value === selectedValue) {
+                endStation.options[i].disabled = true;
+            } else {
+                endStation.options[i].disabled = false;
+            }
+        }
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block title %}Railway Management System - Home{% endblock %}
+
+{% block content %}
+<section class="hero">
+    <div class="hero-content">
+        <h1>Welcome to Railway Management System</h1>
+        <p>Book train tickets, check PNR status, and manage your journeys with ease.</p>
+        <div class="hero-buttons">
+            {% if 'user_id' not in session %}
+                <a href="{{ url_for('login') }}" class="btn btn-primary">Login</a>
+                <a href="{{ url_for('register') }}" class="btn btn-secondary">Register</a>
+            {% else %}
+                <a href="{{ url_for('search_trains') }}" class="btn btn-primary">Search Trains</a>
+                <a href="{{ url_for('my_tickets') }}" class="btn btn-secondary">My Tickets</a>
+            {% endif %}
+        </div>
+    </div>
+</section>
+
+<section class="features">
+    <h2>Our Features</h2>
+    <div class="feature-grid">
+        <div class="feature-card">
+            <h3>Search Trains</h3>
+            <p>Search for available trains between stations with real-time availability status.</p>
+        </div>
+        <div class="feature-card">
+            <h3>Book Tickets</h3>
+            <p>Book tickets online with easy payment options and seat selection.</p>
+        </div>
+        <div class="feature-card">
+            <h3>Manage Bookings</h3>
+            <p>View and manage your bookings, check PNR status, and cancel tickets if needed.</p>
+        </div>
+        <div class="feature-card">
+            <h3>Waiting List</h3>
+            <p>Automatic waiting list system with confirmation on ticket cancellations.</p>
+        </div>
+    </div>
+</section>
+
+<section class="quick-pnr">
+    <h2>Quick PNR Check</h2>
+    <form action="{{ url_for('check_pnr') }}" method="post">
+        <div class="form-group">
+            <label for="pnr">Enter PNR Number:</label>
+            <input type="number" id="pnr" name="pnr" required>
+        </div>
+        <button type="submit" class="btn btn-primary">Check Status</button>
+    </form>
+</section>
+{% endblock %}

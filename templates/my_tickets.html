@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block title %}My Tickets - Railway Management System{% endblock %}
+
+{% block content %}
+<div class="tickets-container">
+    <h2>My Tickets</h2>
+    
+    {% if tickets %}
+        <div class="tickets-list">
+            {% for ticket in tickets %}
+                <div class="ticket-card {% if ticket.status == 'Waiting List' %}waitlist{% endif %}">
+                    <div class="ticket-header">
+                        <div class="ticket-id">
+                            <span class="label">PNR:</span>
+                            <span class="value">{{ ticket.ticket_id }}</span>
+                        </div>
+                        <div class="ticket-status {{ ticket.status.lower().replace(' ', '-') }}">
+                            {{ ticket.status }}
+                        </div>
+                    </div>
+                    
+                    <div class="ticket-journey">
+                        <div class="journey-stations">
+                            <div class="station-from">
+                                <span class="station-name">{{ ticket.boarding_station }}</span>
+                            </div>
+                            <div class="journey-line">
+                                <span class="arrow">→</span>
+                            </div>
+                            <div class="station-to">
+                                <span class="station-name">{{ ticket.destination_station }}</span>
+                            </div>
+                        </div>
+                        <div class="journey-date">
+                            {{ ticket.journey_date.strftime('%d %b, %Y') if ticket.journey_date }}
+                        </div>
+                    </div>
+                    
+                    <div class="ticket-details">
+                        <div class="detail-item">
+                            <span class="label">Train:</span>
+                            <span class="value">{{ ticket.train_name }}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="label">Passenger:</span>
+                            <span class="value">{{ ticket.passenger_name }}</span>
+                        </div>
+                        {% if ticket.seat_num %}
+                        <div class="detail-item">
+                            <span class="label">Seat:</span>
+                            <span class="value">{{ ticket.seat_num }} ({{ ticket.class }})</span>
+                        </div>
+                        {% endif %}
+                        {% if ticket.boggie %}
+                        <div class="detail-item">
+                            <span class="label">Boggie:</span>
+                            <span class="value">{{ ticket.boggie }}</span>
+                        </div>
+                        {% endif %}
+                        <div class="detail-item">
+                            <span class="label">Amount:</span>
+                            <span class="value">₹{{ ticket.paid_amount }}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="ticket-actions">
+                        {% if ticket.status != 'Cancelled' %}
+                            <form action="{{ url_for('cancel_ticket', ticket_id=ticket.ticket_id) }}" method="post">
+                                <button type="submit" class="btn btn-danger btn-small" onclick="return confirm('Are you sure you want to cancel this ticket?')">
+                                    Cancel Ticket
+                                </button>
+                            </form>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="no-tickets">
+            <p>You don't have any tickets yet.</p>
+            <a href="{{ url_for('search_trains') }}" class="btn btn-primary">Book a Ticket</a>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

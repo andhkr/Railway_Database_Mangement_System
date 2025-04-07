@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block title %}User Dashboard - Railway Management System{% endblock %}
+
+{% block content %}
+<div class="dashboard">
+    <h2>Welcome, {{ username }}!</h2>
+    
+    <div class="action-cards">
+        <div class="action-card">
+            <h3>Search Trains</h3>
+            <p>Find trains between stations and check availability.</p>
+            <a href="{{ url_for('search_trains') }}" class="btn btn-primary">Search Now</a>
+        </div>
+        
+        <div class="action-card">
+            <h3>My Tickets</h3>
+            <p>View your booked tickets and manage bookings.</p>
+            <a href="{{ url_for('my_tickets') }}" class="btn btn-primary">View Tickets</a>
+        </div>
+        
+        <div class="action-card">
+            <h3>PNR Status</h3>
+            <p>Check the status of your ticket using PNR number.</p>
+            <a href="{{ url_for('check_pnr') }}" class="btn btn-primary">Check PNR</a>
+        </div>
+    </div>
+</div>
+{% endblock %}
