@@ -466,14 +466,14 @@ RETURNS TABLE (
 )
 LANGUAGE plpgsql AS $$
 DECLARE
-    start_station_id INTEGER;
-    end_station_id INTEGER;
+    start_station_id_decl INTEGER;
+    end_station_id_decl INTEGER;
 BEGIN
     -- Get station IDs
-    SELECT station_id INTO start_station_id FROM stations WHERE name = p_start_station;
-    SELECT station_id INTO end_station_id FROM stations WHERE name = p_end_station;
+    SELECT station_id INTO start_station_id_decl FROM stations WHERE name = p_start_station;
+    SELECT station_id INTO end_station_id_decl FROM stations WHERE name = p_end_station;
     
-    IF start_station_id IS NULL OR end_station_id IS NULL THEN
+    IF start_station_id_decl IS NULL OR end_station_id_decl IS NULL THEN
         RAISE EXCEPTION 'Invalid station names';
     END IF;
     
@@ -491,11 +491,11 @@ BEGIN
             COALESCE(COUNT(DISTINCT wl.ticket_id), 0) > 0 AS has_waitlist,
             CASE 
                 WHEN end_sch.day >= start_sch.day THEN 
-                    make_interval(days => end_sch.day - start_sch.day) + 
-                    (end_sch.arrival_time - start_sch.departure_time)
+                    make_interval(days => (end_sch.day - start_sch.day)::integer) + 
+                    (end_sch.arrival_time::interval - start_sch.departure_time::interval)
                 ELSE
-                    make_interval(days => end_sch.day + 7 - start_sch.day) + 
-                    (end_sch.arrival_time - start_sch.departure_time)
+                    make_interval(days => (end_sch.day + 7 - start_sch.day)::integer) + 
+                    (end_sch.arrival_time::interval - start_sch.departure_time::interval)
             END AS travel_time
         FROM
             trains t
@@ -507,19 +507,19 @@ BEGIN
                 tk.day_of_ticket = p_journey_date + 
                 make_interval(days => CASE 
                     WHEN EXTRACT(DOW FROM p_journey_date) + 1 > start_sch.day 
-                    THEN 7 - (EXTRACT(DOW FROM p_journey_date) + 1) + start_sch.day
-                    ELSE start_sch.day - (EXTRACT(DOW FROM p_journey_date) + 1)
+                    THEN (7 - (EXTRACT(DOW FROM p_journey_date) + 1) + start_sch.day)::integer
+                    ELSE (start_sch.day - (EXTRACT(DOW FROM p_journey_date) + 1))::integer
                 END)
             LEFT JOIN waiting_list wl ON t.train_id = wl.train_id AND 
                 wl.day_of_ticket = p_journey_date + 
                 make_interval(days => CASE 
                     WHEN EXTRACT(DOW FROM p_journey_date) + 1 > start_sch.day 
-                    THEN 7 - (EXTRACT(DOW FROM p_journey_date) + 1) + start_sch.day
-                    ELSE start_sch.day - (EXTRACT(DOW FROM p_journey_date) + 1)
+                    THEN (7 - (EXTRACT(DOW FROM p_journey_date) + 1) + start_sch.day)::integer
+                    ELSE (start_sch.day - (EXTRACT(DOW FROM p_journey_date) + 1))::integer
                 END)
         WHERE
-            start_route.start_station_id = start_station_id AND
-            end_route.end_station_id = end_station_id AND
+            start_route.start_station_id = start_station_id_decl AND
+            end_route.end_station_id = end_station_id_decl AND
             start_sch.day <= end_sch.day AND
             (p_preferred_class IS NULL OR EXISTS (
                 SELECT 1 FROM seats s 
@@ -535,10 +535,10 @@ BEGIN
         at.departure_time,
         at.arrival_time,
         at.journey_day,
-        (at.num_seats - at.booked_seats) AS available_seats,
+        (at.num_seats - at.booked_seats)::integer AS available_seats,
         CASE WHEN p_preferred_class IS NULL 
-            THEN get_amount(p_start_station, p_end_station, at.train_id, 'Sleeper')
-            ELSE get_amount(p_start_station, p_end_station, at.train_id, p_preferred_class)
+            THEN get_amount(p_start_station, p_end_station, at.train_id, 'Sleeper')::numeric
+            ELSE get_amount(p_start_station, p_end_station, at.train_id, p_preferred_class)::numeric
         END AS fare,
         at.travel_time,
         at.has_waitlist
@@ -569,3 +569,66 @@ begin
 end;
 $$;
 
+CREATE OR REPLACE FUNCTION get_amount(
+    start_station_name VARCHAR(100),
+    end_station_name VARCHAR(100),
+    train_id INTEGER,
+    class VARCHAR
+)
+RETURNS FLOAT
+AS $$
+DECLARE
+    per_km_fare FLOAT;
+    start_row_id INTEGER;
+    end_row_id INTEGER;
+    amount FLOAT;
+
+BEGIN
+ 	
+	SELECT price INTO per_km_fare FROM fare_per_km fpk
+    WHERE fpk.class = get_amount.class;
+
+    WITH routes_r AS (
+        SELECT station_name, distance, ROW_NUMBER() OVER () AS row_num FROM get_route(train_id)
+    )
+	
+    SELECT r1.row_num, r2.row_num INTO start_row_id, end_row_id FROM routes_r r1, routes_r r2
+    WHERE r1.station_name = start_station_name AND r2.station_name = end_station_name;
+
+    WITH routes_r AS (
+        SELECT station_name, distance, ROW_NUMBER() OVER () AS row_num FROM get_route(train_id)
+    )
+    SELECT COALESCE(SUM(distance * per_km_fare), 0.0) INTO amount FROM routes_r
+    WHERE row_num > start_row_id AND row_num <= end_row_id;
+
+    RETURN amount;
+	
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE PROCEDURE PAY(TICKET_ID INTEGER, BANK_DETAILS VARCHAR(20))
+AS $$
+DECLARE 
+    train_id INTEGER;
+    start_station_name VARCHAR(255);
+    end_station_name VARCHAR(255);
+    seat_class VARCHAR(50);
+    amount FLOAT;
+BEGIN
+
+    SELECT 
+        t.train_id, 
+        (SELECT st.name FROM stations st WHERE st.station_id = t.start_station_id), 
+        (SELECT st.name FROM stations st WHERE st.station_id = t.end_station_id),
+        st.class
+    INTO train_id, start_station_name, end_station_name, seat_class FROM tickets t
+    JOIN seats st ON st.seat_id = t.seat_id
+    WHERE t.ticket_id = PAY.TICKET_ID; 
+
+    SELECT GET_AMOUNT(start_station_name, end_station_name, train_id, seat_class) INTO amount;
+	
+	INSERT INTO Payments (ticket_id, amount, bank_details) VALUES
+	(TICKET_ID, amount, BANK_DETAILS);
+
+END;
+$$ LANGUAGE plpgsql;

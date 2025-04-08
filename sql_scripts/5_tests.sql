@@ -47,6 +47,20 @@ BEGIN
 
 END $$;
 
+--tests for the get_amount (this is a very important comment)
+DO $$ 
+DECLARE amount FLOAT; 
+BEGIN
+    amount := get_amount('New Delhi', 'Mumbai Central', 1, 'Sleeper');
+	raise notice 'amount: %', amount;
+	amount := get_amount('New Delhi', 'Howrah Junction', 1, 'General');
+	raise notice 'amount: %', amount;
+	amount := get_amount('New Delhi', 'Chennai Central', 1, 'First AC');
+	raise notice 'amount: %', amount;
+END $$;
+
+call PAY(1, 'UPI-095834952839582');
+
 --test admin view
 select * from admin_train_overview;
 --employee_view
