@@ -520,7 +520,23 @@ BEGIN
         WHERE
             start_route.start_station_id = start_station_id_decl AND
             end_route.end_station_id = end_station_id_decl AND
-            start_sch.day <= end_sch.day AND
+            -- start_sch.day <= end_sch.day AND
+            (
+                (
+                    start_sch.day <= end_sch.day
+                    and
+                    EXTRACT(DOW FROM p_journey_date) between start_sch.day and end_sch.day
+                )
+                or
+                (
+                    start_sch.day > end_sch.day
+                    and 
+                    (
+                        EXTRACT(DOW FROM p_journey_date) >= start_sch.day
+                        or EXTRACT(DOW FROM p_journey_date) <= end_sch.day
+                    )
+                )
+            ) AND
             (p_preferred_class IS NULL OR EXISTS (
                 SELECT 1 FROM seats s 
                 WHERE s.train_id = t.train_id AND s.class = p_preferred_class
