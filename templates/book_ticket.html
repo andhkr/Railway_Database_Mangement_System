@@ -55,6 +55,7 @@
             </div>
         </div>
         
+        <!-- Keep your original form field names for the primary passenger -->
         <div class="form-section">
             <h3>Passenger Details</h3>
             
@@ -84,6 +85,17 @@
                 <label for="passenger_phone">Phone Number:</label>
                 <input type="tel" id="passenger_phone" name="passenger_phone" required>
             </div>
+            
+            <!-- Additional passengers (these will be handled separately) -->
+            <div id="additional-passengers-container">
+                <!-- Additional passenger forms will be added here dynamically -->
+            </div>
+            
+            <div class="passenger-controls">
+                <button type="button" id="add-passenger" class="btn btn-secondary">+ Add Another Passenger</button>
+                <p class="passenger-count">Total Passengers: <span id="total-passengers">1</span></p>
+                <input type="hidden" id="additional_passengers" name="additional_passengers" value="">
+            </div>
         </div>
         
         <div class="form-section">
@@ -100,13 +112,71 @@
             </div>
         </div>
         
+        <div class="booking-summary">
+            <h3>Booking Summary</h3>
+            <p>Journey: <span id="journey-summary">-</span></p>
+            <p>Date: <span id="date-summary">-</span></p>
+            <p>Class: <span id="class-summary">-</span></p>
+            <p>Passengers: <span id="passengers-summary">1</span></p>
+            <p>Total Fare: <span id="total-fare">Calculating...</span></p>
+        </div>
+        
         <button type="submit" class="btn btn-primary">Confirm Booking</button>
     </form>
 </div>
+
+<!-- CSS for passenger form styling -->
+<style>
+    .passenger-form {
+        background-color: #f9f9f9;
+        border: 1px solid #e0e0e0;
+        border-radius: 5px;
+        padding: 15px;
+        margin-bottom: 15px;
+        position: relative;
+    }
+    
+    .remove-passenger {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background: #ff6b6b;
+        color: white;
+        border: none;
+        border-radius: 50%;
+        width: 25px;
+        height: 25px;
+        line-height: 25px;
+        text-align: center;
+        cursor: pointer;
+    }
+    
+    .passenger-controls {
+        display: flex;
+        align-items: center;
+        margin: 15px 0;
+    }
+    
+    .passenger-controls .passenger-count {
+        margin-left: 15px;
+    }
+    
+    .booking-summary {
+        background-color: #f0f7ff;
+        border: 1px solid #d0e3ff;
+        border-radius: 5px;
+        padding: 15px;
+        margin: 20px 0;
+    }
+</style>
 {% endblock %}
 
 {% block scripts %}
 <script>
+    // Global passenger counter
+    let passengerCount = 1;
+    let additionalPassengers = [];
+    
     // Prevent selecting the same station for departure and arrival
     document.getElementById('start_station').addEventListener('change', function() {
         const endStation = document.getElementById('end_station');
@@ -119,6 +189,194 @@
                 endStation.options[i].disabled = false;
             }
         }
+        
+        updateBookingSummary();
+    });
+    
+    // Add passenger button functionality
+    document.getElementById('add-passenger').addEventListener('click', function() {
+        // Increment the passenger count
+        passengerCount++;
+        
+        // Create a new passenger form
+        const newPassengerForm = document.createElement('div');
+        newPassengerForm.className = 'passenger-form';
+        newPassengerForm.id = `passenger-form-${passengerCount}`;
+        
+        // Create the form contents
+        newPassengerForm.innerHTML = `
+            <h4>Additional Passenger ${passengerCount-1}</h4>
+            <button type="button" class="remove-passenger" onclick="removePassenger(${passengerCount})">×</button>
+            <div class="form-group">
+                <label for="additional_name_${passengerCount}">Full Name:</label>
+                <input type="text" id="additional_name_${passengerCount}" data-field="name" required>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="additional_age_${passengerCount}">Age:</label>
+                    <input type="number" id="additional_age_${passengerCount}" data-field="age" min="1" max="120" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="additional_gender_${passengerCount}">Gender:</label>
+                    <select id="additional_gender_${passengerCount}" data-field="gender" required>
+                        <option value="">Select Gender</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="additional_phone_${passengerCount}">Phone Number:</label>
+                <input type="tel" id="additional_phone_${passengerCount}" data-field="phone" required>
+            </div>
+        `;
+        
+        // Add the new form to the container
+        document.getElementById('additional-passengers-container').appendChild(newPassengerForm);
+        
+        // Update the display and add listener for the new form
+        updatePassengerCount();
+        addAdditionalPassengerListeners(newPassengerForm);
+        
+        // Update booking summary
+        updateBookingSummary();
+    });
+    
+    // Function to add input event listeners to additional passenger forms
+    function addAdditionalPassengerListeners(formElement) {
+        const inputs = formElement.querySelectorAll('input, select');
+        const passengerId = formElement.id.split('-').pop();
+        
+        // Create entry in the additionalPassengers array
+        if (!additionalPassengers[passengerId]) {
+            additionalPassengers[passengerId] = {id: passengerId};
+        }
+        
+        inputs.forEach(input => {
+            input.addEventListener('input', function() {
+                const fieldName = this.getAttribute('data-field');
+                additionalPassengers[passengerId][fieldName] = this.value;
+                updateHiddenField();
+            });
+        });
+    }
+    
+    // Function to update the hidden field with additional passenger data
+    function updateHiddenField() {
+        // Filter out null/undefined entries
+        const cleanedPassengers = additionalPassengers.filter(p => p);
+        document.getElementById('additional_passengers').value = JSON.stringify(cleanedPassengers);
+    }
+    
+    // Function to remove a passenger
+    function removePassenger(passengerId) {
+        const passengerForm = document.getElementById(`passenger-form-${passengerId}`);
+        
+        if (passengerForm) {
+            passengerForm.remove();
+            
+            // Remove from our additional passengers array
+            additionalPassengers[passengerId] = null;
+            updateHiddenField();
+            
+            // Update the count
+            updatePassengerCount();
+            
+            // Update booking summary
+            updateBookingSummary();
+        }
+    }
+    
+    // Function to update passenger count display
+    function updatePassengerCount() {
+        const actualCount = 1 + document.querySelectorAll('#additional-passengers-container .passenger-form').length;
+        document.getElementById('total-passengers').textContent = actualCount;
+        document.getElementById('passengers-summary').textContent = actualCount;
+    }
+    
+    // Function to update the booking summary
+    function updateBookingSummary() {
+        const startStation = document.getElementById('start_station');
+        const endStation = document.getElementById('end_station');
+        const journeyDate = document.getElementById('journey_date');
+        const travelClass = document.getElementById('class');
+        
+        // Update journey details
+        if (startStation.value && endStation.value) {
+            document.getElementById('journey-summary').textContent = 
+                `${startStation.options[startStation.selectedIndex].text} to ${endStation.options[endStation.selectedIndex].text}`;
+        }
+        
+        // Update date
+        if (journeyDate.value) {
+            const date = new Date(journeyDate.value);
+            document.getElementById('date-summary').textContent = date.toLocaleDateString('en-IN');
+        }
+        
+        // Update class
+        if (travelClass.selectedIndex > 0) {
+            document.getElementById('class-summary').textContent = 
+                travelClass.options[travelClass.selectedIndex].text;
+        }
+        
+        // Calculate fare
+        calculateTotalFare();
+    }
+    
+    // Calculate total fare based on class, passenger count, and distance
+    function calculateTotalFare() {
+        const selectedClass = document.getElementById('class');
+        const totalPassengers = 1 + document.querySelectorAll('#additional-passengers-container .passenger-form').length;
+        const startStation = document.getElementById('start_station').value;
+        const endStation = document.getElementById('end_station').value;
+        
+        if (selectedClass.selectedIndex > 0 && startStation && endStation) {
+            const fareElement = document.getElementById('total-fare');
+            
+            fareElement.textContent = "Calculating...";
+            
+            // Simulate server response - in a real app this would be an AJAX call
+            setTimeout(() => {
+                // Extract price from the selected class option text
+                const classText = selectedClass.options[selectedClass.selectedIndex].text;
+                const priceMatch = classText.match(/₹(\d+)/);
+                
+                if (priceMatch) {
+                    const pricePerKm = parseInt(priceMatch[1]);
+                    // Example distance calculation - in real app would be calculated based on stations
+                    const estimatedDistance = 100;
+                    const baseFare = pricePerKm * estimatedDistance;
+                    
+                    // Simple calculation without age discounts for now
+                    const totalFare = baseFare * totalPassengers;
+                    
+                    fareElement.textContent = `₹${totalFare.toFixed(2)} (Estimated)`;
+                } else {
+                    fareElement.textContent = "Please select journey details";
+                }
+            }, 300);
+        }
+    }
+    
+    // Add event listeners to update booking summary when details change
+    document.getElementById('start_station').addEventListener('change', updateBookingSummary);
+    document.getElementById('end_station').addEventListener('change', updateBookingSummary);
+    document.getElementById('journey_date').addEventListener('change', updateBookingSummary);
+    document.getElementById('class').addEventListener('change', updateBookingSummary);
+    
+    // Form submission handler
+    document.querySelector('.booking-form').addEventListener('submit', function(e) {
+        // Automatically update the hidden field with all passenger data
+        updateHiddenField();
+    });
+    
+    // Initialize the booking summary on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        updateBookingSummary();
     });
 </script>
 {% endblock %}

@@ -11,6 +11,7 @@ from models.database import (
     get_employee_duties, get_all_stations, get_train_classes, add_passenger,get_db_connection
 )
 from config import SECRET_KEY
+import json
 
 app = Flask(__name__)
 app.secret_key = SECRET_KEY
@@ -159,7 +160,7 @@ def search_trains():
         
         # Search for available trains
         trains = search_available_trains(start_station, end_station, journey_date, preferred_class)
-        
+        print(trains)
         return render_template('search_trains.html', 
                               stations=stations, 
                               train_classes=train_classes, 
@@ -174,6 +175,7 @@ def search_trains():
     return render_template('search_trains.html', stations=stations, train_classes=train_classes)
 
 @app.route('/book-ticket/<int:train_id>', methods=['GET', 'POST'])
+@app.route('/book_ticket/<int:train_id>', methods=['GET', 'POST'])
 def book_ticket(train_id):
     """Ticket booking route"""
     if not is_logged_in():
@@ -186,38 +188,95 @@ def book_ticket(train_id):
     if request.method == 'POST':
         start_station = request.form.get('start_station')
         end_station = request.form.get('end_station')
+        selected_class = request.form.get('class')
+        journey_date = request.form.get('journey_date')
+        
+        # Primary passenger data (using your existing field names)
         passenger_name = request.form.get('passenger_name')
         passenger_age = request.form.get('passenger_age')
         passenger_gender = request.form.get('passenger_gender')
         passenger_phone = request.form.get('passenger_phone')
-        selected_class = request.form.get('class')
-        journey_date = request.form.get('journey_date')
         
-        # Add passenger to database
-        passenger_id = add_passenger(passenger_name, passenger_gender, passenger_age, passenger_phone)
+        # Debug print
+        print("Primary passenger:", passenger_name, passenger_gender, passenger_age, passenger_phone)
         
-        if not passenger_id:
+        # Add primary passenger to database
+        primary_passenger_id = add_passenger(passenger_name, passenger_gender, passenger_age, passenger_phone)
+        
+        if not primary_passenger_id:
             flash('Error adding passenger details')
             return redirect(url_for('search_trains'))
         
-        # Book ticket
-        ticket_id = book_new_ticket(
+        # Book ticket for primary passenger
+        primary_ticket_id = book_new_ticket(
             session.get('user_id'),
             train_id,
             start_station,
             end_station,
-            passenger_id,
+            primary_passenger_id,
             selected_class,
             journey_date
         )
         
-        if ticket_id:
-            flash(f'Ticket booked successfully! Your PNR is {ticket_id}')
-            return redirect(url_for('my_tickets'))
-        else:
-            flash('Ticket booking failed. Train might be full.')
+        if not primary_ticket_id:
+            flash('Ticket booking failed for primary passenger. Train might be full.')
             return redirect(url_for('search_trains'))
-    
+        
+        # Handle additional passengers if any
+        additional_passengers_json = request.form.get('additional_passengers', '[]')
+        try:
+            additional_passengers = json.loads(additional_passengers_json)
+            
+            # Debug print
+            print(f"Found {len(additional_passengers)} additional passengers")
+            
+            # Process each additional passenger
+            additional_ticket_ids = []
+            for passenger in additional_passengers:
+                if passenger:  # Skip null/None values
+                    print(f"Processing additional passenger: {passenger}")
+                    # Extract passenger details
+                    add_name = passenger.get('name')
+                    add_age = passenger.get('age')
+                    add_gender = passenger.get('gender')
+                    add_phone = passenger.get('phone')
+                    
+                    if add_name and add_age and add_gender and add_phone:
+                        # Add additional passenger to database
+                        add_passenger_id = add_passenger(add_name, add_gender, add_age, add_phone)
+                        
+                        if add_passenger_id:
+                            # Book ticket for additional passenger
+                            add_ticket_id = book_new_ticket(
+                                session.get('user_id'),
+                                train_id,
+                                start_station,
+                                end_station,
+                                add_passenger_id,
+                                selected_class,
+                                journey_date
+                            )
+                            
+                            if add_ticket_id:
+                                additional_ticket_ids.append(add_ticket_id)
+                            else:
+                                flash(f'Booking failed for passenger {add_name}. Train might be full.')
+                        else:
+                            flash(f'Error adding details for passenger {add_name}')
+            
+            # Success message
+            if len(additional_ticket_ids) > 0:
+                flash(f'Successfully booked {1 + len(additional_ticket_ids)} tickets! Primary PNR: {primary_ticket_id}')
+            else:
+                flash(f'Ticket booked successfully! Your PNR is {primary_ticket_id}')
+                
+            return redirect(url_for('my_tickets'))
+            
+        except json.JSONDecodeError:
+            # If there's an error parsing the JSON, just proceed with the primary passenger
+            flash(f'Ticket booked successfully! Your PNR is {primary_ticket_id}')
+            return redirect(url_for('my_tickets'))
+            
     return render_template('book_ticket.html', 
                           train_id=train_id, 
                           stations=stations, 

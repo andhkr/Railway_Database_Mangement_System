@@ -69,7 +69,9 @@ def search_available_trains(start_station, end_station, journey_date, preferred_
 
 def book_new_ticket(user_id, train_id, start_station, end_station, passenger_id, class_name, journey_date):
     query = "SELECT book_ticket(%s, %s, %s, %s, %s, %s, %s)"
+    
     result = execute_query(query, (user_id, train_id, start_station, end_station, passenger_id, class_name, journey_date))
+    
     return result[0][0] if result else None
 
 def get_ticket_status(ticket_id):

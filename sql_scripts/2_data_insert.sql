@@ -128,9 +128,9 @@ INSERT INTO Seats(seat_id,train_id, seat_num, boggie, berth, class) VALUES
 -----------------------------
 -- 8. Passengers & Tickets (10+ entries)
 -----------------------------
-INSERT INTO Passengers (passenger_id,name, gender, age, phone, email, address) VALUES
-(1,'Aarav Patel','Male',28,'7654321098','aarav@gmail.com','Ahmedabad'),
-(2,'Ananya Reddy','Female',24,'6543210987','ananya@yahoo.com','Hyderabad');
+INSERT INTO Passengers (name, gender, age, phone, email, address) VALUES
+('Aarav Patel','Male',28,'7654321098','aarav@gmail.com','Ahmedabad'),
+('Ananya Reddy','Female',24,'6543210987','ananya@yahoo.com','Hyderabad');
 
 INSERT INTO users VALUES
 (1,'admin','admin123'),
