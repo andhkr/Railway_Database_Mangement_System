@@ -132,9 +132,16 @@ INSERT INTO Passengers (name, gender, age, phone, email, address) VALUES
 ('Aarav Patel','Male',28,'7654321098','aarav@gmail.com','Ahmedabad'),
 ('Ananya Reddy','Female',24,'6543210987','ananya@yahoo.com','Hyderabad');
 
-INSERT INTO users VALUES
-(1,'admin','admin123'),
-(2,'user1','password@123');
+insert into user_roles (role_id , role_name) VALUES
+(0,'user_role'),
+(1,'admin_role'),
+(2,'employee_role');
+
+INSERT INTO users (user_id,username,password,role_id)VALUES
+(1,'user1','user1123',0),
+(2,'user2','user2123',0),
+(3,'admin1','admin123',1),
+(4,'employee1','employee123',2);
 
 INSERT INTO Tickets (train_id, seat_id, ticket_user, day_of_ticket, start_station_id, end_station_id, passenger_id) VALUES
 (1,1,1,'2023-10-01 14:00',1,4,1), -- Mumbai-Delhi

@@ -8,37 +8,81 @@ from models.database import (
     get_user_by_username, register_user, change_user_password,
     search_available_trains, book_new_ticket, get_ticket_status,
     cancel_user_ticket, get_user_bookings, get_admin_train_overview,
-    get_employee_duties, get_all_stations, get_train_classes, add_passenger,get_db_connection
+    get_employee_duties, get_all_stations, get_train_classes, add_passenger,get_db_connection,initialize_connection_pool,check_db_connection,
+    release_db_connection
 )
 from config import SECRET_KEY
 import json
+import atexit
 
 app = Flask(__name__)
 app.secret_key = SECRET_KEY
 
+# Initialize the database connection pool at startup
+if initialize_connection_pool():
+    print("Database connection pool initialized successfully.")
+else:
+    print("Failed to initialize database connection pool. Check your credentials.")
+    # Depending on your requirements, you might want to exit the application here
+    # import sys
+    # sys.exit(1)
+
+# Test the connection
+if check_db_connection():
+    print("Database connection test successful.")
+else:
+    print("Database connection test failed.")
+
+# Register function to close pool at application exit
+def close_connection_pool():
+    from models.database import connection_pool
+    if connection_pool:
+        connection_pool.closeall()
+        print("Database connection pool closed.")
+
+atexit.register(close_connection_pool)
+
 def initialize_database():
     conn = get_db_connection()
+    conn.autocommit = False  # Turn off autocommit for transaction
     cur = conn.cursor()
 
-    # Get all SQL files from the sql_scripts directory
-    # Assuming you have a directory called sql_scripts in your project root
-    sql_files = sorted(glob.glob('sql_scripts/*.sql'))
+    try:
+        # Get all SQL files from the sql_scripts directory
+        # Assuming you have a directory called sql_scripts in your project root
+        sql_files = sorted(glob.glob('sql_scripts/*.sql'))
 
-    print(f"Found {len(sql_files)} SQL files to execute")
+        print(f"Found {len(sql_files)} SQL files to execute")
 
-    for sql_file in sql_files:
-        print(f"Executing {sql_file}...")
-        try:
-            with open(sql_file, 'r') as f:
-                sql_script = f.read()
-                cur.execute(sql_script)
-            print(f"Successfully executed {sql_file}")
-        except Exception as e:
-            print(f"Error executing {sql_file}: {e}")
-
-    cur.close()
-    conn.close()
-    print("Database initialization completed")
+        for sql_file in sql_files:
+            print(f"Executing {sql_file}...")
+            try:
+                with open(sql_file, 'r') as f:
+                    sql_script = f.read()
+                    cur.execute(sql_script)
+                print(f"Successfully executed {sql_file}")
+            except Exception as e:
+                print(f"Error executing {sql_file}: {e}")
+        
+        cur.execute("SELECT user_id, password FROM users")
+        users = cur.fetchall()
+        
+        # Update each user's password with a hashed version
+        for user_id, plain_password in users:
+            hashed_password = generate_password_hash(plain_password)
+            cur.execute(
+                "UPDATE users SET password = %s WHERE user_id = %s",
+                (hashed_password, user_id)
+            )
+        conn.commit()
+        print("Database initialization completed successfully")
+    except Exception as e:
+        # Roll back on error
+        conn.rollback()
+        print(f"Error during database initialization: {e}")
+    finally:
+        cur.close()
+        release_db_connection(conn)  # Return connection to pool
 
 # Helper function to check if user is logged in
 def is_logged_in():
@@ -324,5 +368,5 @@ def api_stations():
     return jsonify(stations)
 
 if __name__ == '__main__':
-    initialize_database()
+    # initialize_database()
     app.run(debug=True)

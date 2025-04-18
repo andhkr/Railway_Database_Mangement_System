@@ -25,10 +25,6 @@ DROP INDEX IF EXISTS idx_routes_stations;
 DROP INDEX IF EXISTS idx_payments_ticket;
 DROP INDEX IF EXISTS idx_users_username;
 
-DROP TRIGGER IF EXISTS after_ticket_cancel ON tickets;
-DROP TRIGGER IF EXISTS before_ticket_insert ON tickets;
-DROP TRIGGER IF EXISTS tickets_audit ON tickets;
-
 DO $$
 BEGIN
     IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'user_role') THEN
@@ -210,3 +206,7 @@ CREATE INDEX idx_payments_ticket ON payments (ticket_id);
 CREATE INDEX idx_users_username ON users (username);
 
 --creating role and granting all privilages
+
+DROP TRIGGER IF EXISTS after_ticket_cancel ON tickets;
+DROP TRIGGER IF EXISTS before_ticket_insert ON tickets;
+DROP TRIGGER IF EXISTS tickets_audit ON tickets;

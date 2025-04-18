@@ -1,34 +1,92 @@
 import psycopg2
+from psycopg2 import pool
 import psycopg2.extras
-from config import DATABASE_URI
+from config import DB_HOST, DB_NAME, DB_USER, DB_PASSWORD, DB_PORT,DB_POOL_MIN_CONN, DB_POOL_MAX_CONN
+
+# Create a global connection pool
+connection_pool = None
+
+def initialize_connection_pool():
+    """Initialize the connection pool"""
+    global connection_pool
+    try:
+        connection_pool = psycopg2.pool.ThreadedConnectionPool(
+            minconn=DB_POOL_MIN_CONN,
+            maxconn=DB_POOL_MAX_CONN,
+            host=DB_HOST,
+            database=DB_NAME,
+            user=DB_USER,
+            password=DB_PASSWORD,
+            port=DB_PORT
+        )
+        
+        # Test the connection by getting and releasing a connection
+        test_conn = connection_pool.getconn()
+        cursor = test_conn.cursor()
+        cursor.execute('SELECT 1')
+        cursor.close()
+        connection_pool.putconn(test_conn)
+        
+        print("Successfully connected to the Supabase database")
+        return True
+    except Exception as e:
+        print(f"Error connecting to the database: {e}")
+        return False
 
 def get_db_connection():
-    """Create a connection to the PostgreSQL database"""
-    conn = psycopg2.connect(DATABASE_URI)
-    conn.autocommit = True
+    """Get a connection from the pool"""
+    if connection_pool is None:
+        initialize_connection_pool()
+    
+    conn = connection_pool.getconn()
     return conn
+
+def release_db_connection(conn):
+    """Release a connection back to the pool"""
+    if connection_pool is not None:
+        connection_pool.putconn(conn)
+
+def check_db_connection():
+    """Test database connection"""
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute('SELECT 1')
+        result = cur.fetchone()
+        cur.close()
+        release_db_connection(conn)
+        return True
+    except Exception as e:
+        print(f"Database connection test failed: {e}")
+        return False
 
 def execute_query(query, params=None, fetch=True):
     """Execute a query and return results if needed"""
-    conn = get_db_connection()
+    conn = None
     try:
+        conn = get_db_connection()
         with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
             cur.execute(query, params)
             if fetch:
                 result = cur.fetchall()
                 return result
+            conn.commit()
             return True
     except Exception as e:
         print(f"Database error: {e}")
+        if conn:
+            conn.rollback()
         return None
     finally:
-        conn.close()
+        if conn:
+            release_db_connection(conn)  # Return to the pool
 
 
 def call_function(function_name, params=None):
     """Call a PostgreSQL function and return results"""
-    conn = get_db_connection()
+    conn = None
     try:
+        conn = get_db_connection()
         with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
             if params:
                 cur.callproc(function_name, params)
@@ -38,14 +96,20 @@ def call_function(function_name, params=None):
             return result
     except Exception as e:
         print(f"Function call error: {e}")
+        if conn:
+            conn.rollback()
         return None
     finally:
-        conn.close()
+        if conn:
+            release_db_connection(conn)  # Return to the pool
+
 
 # User authentication methods
 def get_user_by_username(username):
     query = "SELECT user_id, username, password, role_id FROM users WHERE username = %s"
+    print(username)
     result = execute_query(query, (username,))
+    print(result)
     return result[0] if result else None
 
 def register_user(username, password, email, phone):
