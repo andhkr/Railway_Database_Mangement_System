@@ -69,3 +69,29 @@ select * from employee_duties(2);
 select * from user_bookings(2);
 --pnr check
 select * from pnr_status(-1);
+
+-- search trains
+SELECT * FROM search_trains('Mumbai CST', 'Delhi Junction', '2023-07-15');
+SELECT * FROM search_trains('Mumbai CST', 'Delhi Junction', '2023-07-15', 'AC First');
+SELECT * FROM search_trains('Delhi Junction', 'Mumbai CST', '2023-07-16');
+SELECT * FROM search_trains('Invalid Station', 'Delhi Junction', '2023-07-15');
+SELECT * FROM search_trains('Mumbai CST', 'Invalid Station', '2023-07-15');
+SELECT * FROM search_trains('Mumbai CST', 'Delhi Junction', '2023-07-17');
+SELECT * FROM search_trains('Mumbai CST', 'Delhi Junction', '2023-07-18'); 
+SELECT * FROM search_trains('Mumbai CST', 'Delhi Junction', '2023-07-19'); 
+SELECT * FROM search_trains('Mumbai CST', 'Howrah Junction', '2023-07-15');
+SELECT * FROM search_trains('Pune Junction', 'Bengaluru City', '2023-07-15');
+SELECT * FROM search_trains('Mumbai CST', 'Delhi Junction', '2024-01-01');
+SELECT * FROM search_trains('Mumbai CST', 'Kolkata Santragachi', '2023-07-15');
+SELECT * FROM search_trains('Mumbai', 'Delhi', '2023-07-15');
+SELECT * FROM search_trains('mumbai cst', 'delhi junction', '2023-07-15');
+SELECT * FROM search_trains('Mumbai CST', 'Delhi Junction', '2023-07-22'); 
+SELECT * FROM search_trains('Mumbai CST', 'Delhi Junction', '2023-07-23'); 
+SELECT * FROM search_trains('Mumbai CST', 'Delhi Junction', '2023-12-31'); 
+SELECT * FROM search_trains('Mumbai CST', 'Delhi Junction', '2024-01-01'); 
+SELECT * FROM search_trains('Thiruvananthapuram Central', 'Guwahati', '2023-07-15');
+SELECT * FROM search_trains('Jaipur Junction', 'Guwahati', '2023-07-15');
+SELECT * FROM search_trains('Mumbai CST', 'Delhi Junction', '2023-07-15', 'Sleeper');
+SELECT * FROM search_trains('Mumbai CST', 'Delhi Junction', '2023-07-15', 'AC First');
+SELECT * FROM search_trains('Mumbai CST', 'Delhi Junction', '2023-07-15', 'AC 2 Tier');
+SELECT * FROM search_trains('Mumbai CST', 'Delhi Junction', '2023-07-15', 'AC 3 Tier');
