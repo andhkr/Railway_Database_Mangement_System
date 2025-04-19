@@ -287,6 +287,7 @@ RETURNS INTEGER
 LANGUAGE plpgsql AS $$
 DECLARE
     new_user_id INTEGER;
+    new_role    varchar(100);
 BEGIN
     -- Check if username already exists
     IF EXISTS (SELECT 1 FROM users WHERE username = p_username) THEN
@@ -295,11 +296,11 @@ BEGIN
     
     -- Get next user ID
     SELECT COALESCE(MAX(user_id), 0) + 1 INTO new_user_id FROM users;
-    
+
     -- Insert new user with default role as 'user'
-    INSERT INTO users (user_id, username, password, role_id)
-    VALUES (new_user_id, p_username, p_password, 
-           (SELECT role_id FROM user_roles WHERE role_name = 'user'));
+    INSERT INTO users (user_id, username, password, role_id,db_role_name)
+    VALUES (new_user_id, p_username, p_password,
+           (SELECT role_id FROM user_roles WHERE role_name = 'user_role'));
     
     -- -- Create passenger record for the user
     -- INSERT INTO passengers (name, email, phone)

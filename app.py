@@ -9,12 +9,11 @@ from models.database import (
     search_available_trains, book_new_ticket, get_ticket_status,
     cancel_user_ticket, get_user_bookings, get_admin_train_overview,
     get_employee_duties, get_all_stations, get_train_classes, add_passenger,get_db_connection,initialize_connection_pool,check_db_connection,
-    release_db_connection
+    release_db_connection,session_role_id
 )
 from config import SECRET_KEY
 import json
 import atexit
-
 app = Flask(__name__)
 app.secret_key = SECRET_KEY
 
@@ -29,7 +28,7 @@ else:
 
 # Test the connection
 if check_db_connection():
-    print("Database connection test successful.")
+    print("Database connection test successful. and role_id")
 else:
     print("Database connection test failed.")
 
@@ -100,6 +99,7 @@ def index():
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     """User login route"""
+    global session_role_id
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
@@ -111,13 +111,17 @@ def login():
             session['user_id'] = user['user_id']
             session['username'] = user['username']
             session['role_id'] = user['role_id']
+            session_role_id = user['role_id']
             
             # Redirect based on role
             if user['role_id'] == 1:  # Admin
+                # set_role_for_user(1)
                 return redirect(url_for('admin_dashboard'))
             elif user['role_id'] == 2:  # Employee
+                # set_role_for_user(2)
                 return redirect(url_for('employee_dashboard'))
             else:  # Regular user
+                # set_role_for_user(0)
                 return redirect(url_for('dashboard'))
         else:
             flash('Invalid username or password')
@@ -204,7 +208,7 @@ def search_trains():
         
         # Search for available trains
         trains = search_available_trains(start_station, end_station, journey_date, preferred_class)
-        print(trains)
+        # print(trains)
         return render_template('search_trains.html', 
                               stations=stations, 
                               train_classes=train_classes, 
