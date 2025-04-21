@@ -142,8 +142,8 @@ INSERT INTO Seats (seat_id,train_id, seat_num, boggie, berth, class) VALUES
 (9,1,'1A-03','1A','Side Lower','First AC'),
 (10,1,'A1-02','A1','Upper','Second AC'),
 (11,1,'A1-03','A1','Middle','Second AC'),
-(12,1,'B1-02','B1','Lower','Third AC'),
-(13,1,'B1-03','B1','Middle','Third AC');
+(12,1,'B1-02','B1','Lower','First AC'),
+(13,1,'B1-03','B1','Middle','First AC');
 
 -- Deccan Queen (Non-AC)
 INSERT INTO Seats (seat_id,train_id, seat_num, boggie, berth, class) VALUES

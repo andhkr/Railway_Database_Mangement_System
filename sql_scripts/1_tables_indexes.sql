@@ -16,14 +16,14 @@ DROP SEQUENCE IF EXISTS shared_ticket_id;
 DROP TABLE IF EXISTS Payments CASCADE;
 DROP TABLE IF EXISTS audit_logs CASCADE;
 
-DROP INDEX IF EXISTS idx_tickets_train_date;
-DROP INDEX IF EXISTS idx_waiting_list_train_date;
-DROP INDEX IF EXISTS idx_schedules_train_day;
-DROP INDEX IF EXISTS idx_seats_train_class;
-DROP INDEX IF EXISTS idx_stations_name;
-DROP INDEX IF EXISTS idx_routes_stations;
-DROP INDEX IF EXISTS idx_payments_ticket;
-DROP INDEX IF EXISTS idx_users_username;
+-- DROP INDEX IF EXISTS idx_tickets_train_date;
+-- DROP INDEX IF EXISTS idx_waiting_list_train_date;
+-- DROP INDEX IF EXISTS idx_schedules_train_day;
+-- DROP INDEX IF EXISTS idx_seats_train_class;
+-- DROP INDEX IF EXISTS idx_stations_name;
+-- DROP INDEX IF EXISTS idx_routes_stations;
+-- DROP INDEX IF EXISTS idx_payments_ticket;
+-- DROP INDEX IF EXISTS idx_users_username;
 
 -- DO $$
 -- BEGIN
@@ -197,14 +197,14 @@ CREATE TABLE audit_logs (
 );
 
 -- Add indexes for frequently queried columns
-CREATE INDEX idx_tickets_train_date ON tickets (train_id, day_of_ticket);
-CREATE INDEX idx_waiting_list_train_date ON waiting_list (train_id, day_of_ticket);
-CREATE INDEX idx_schedules_train_day ON schedules (train_id, day);
-CREATE INDEX idx_seats_train_class ON seats (train_id, class);
-CREATE INDEX idx_stations_name ON stations (name);
-CREATE INDEX idx_routes_stations ON routes (start_station_id, end_station_id);
-CREATE INDEX idx_payments_ticket ON payments (ticket_id);
-CREATE INDEX idx_users_username ON users (username);
+-- CREATE INDEX idx_tickets_train_date ON tickets (train_id, day_of_ticket);
+-- CREATE INDEX idx_waiting_list_train_date ON waiting_list (train_id, day_of_ticket);
+-- CREATE INDEX idx_schedules_train_day ON schedules (train_id, day);
+-- CREATE INDEX idx_seats_train_class ON seats (train_id, class);
+-- CREATE INDEX idx_stations_name ON stations (name);
+-- CREATE INDEX idx_routes_stations ON routes (start_station_id, end_station_id);
+-- CREATE INDEX idx_payments_ticket ON payments (ticket_id);
+-- CREATE INDEX idx_users_username ON users (username);
 
 --creating role and granting all privilages
 

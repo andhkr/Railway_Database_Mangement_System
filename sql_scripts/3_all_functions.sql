@@ -655,17 +655,26 @@ CREATE OR REPLACE PROCEDURE add_ticket_on_cancel(
 AS $$
 DECLARE
     seat_id INTEGER;
+    start_station VARCHAR;
+    end_station VARCHAR;
     wt RECORD;
 BEGIN
 
     FOR wt IN
         SELECT * FROM waiting_list 
-        WHERE wt.train_id = ticket_train_id
-        AND wt.class = ticket_class
+        WHERE train_id = ticket_train_id
+        AND class = ticket_class
         ORDER BY created_at
     LOOP
 
-        SELECT allot(wt.start_station_id, wt.end_station_id, wt.class, wt.train_id, wt.day_of_ticket) INTO seat_id;
+        select name into start_station from stations 
+        where station_id = wt.start_station_id;
+
+        select name into end_station from stations 
+        where station_id = wt.end_station_id;
+
+        -- SELECT allot(p_start_station, p_end_station, p_class, p_train_id, p_journey_date) INTO seat_id;
+        SELECT allot(start_station, end_station, wt.class, wt.train_id, wt.day_of_ticket) INTO seat_id;
         IF seat_id != -1 THEN
 
             INSERT INTO tickets (
@@ -677,7 +686,7 @@ BEGIN
             );
 
             DELETE FROM waiting_list
-            WHERE waiting_id = wt.waiting_id;
+            WHERE ticket_id = wt.ticket_id;
             
             EXIT;
 

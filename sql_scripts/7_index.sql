@@ -1,3 +1,24 @@
+-- Drop existing indexes first
+DROP INDEX IF EXISTS idx_tickets_user_id;
+DROP INDEX IF EXISTS idx_tickets_date;
+DROP INDEX IF EXISTS idx_tickets_train_date;
+DROP INDEX IF EXISTS idx_tickets_train_seat;
+DROP INDEX IF EXISTS idx_tickets_stations;
+DROP INDEX IF EXISTS idx_tickets_passenger;
+
+DROP INDEX IF EXISTS idx_waitlist_user_id;
+DROP INDEX IF EXISTS idx_waitlist_date;
+DROP INDEX IF EXISTS idx_waitlist_allocation;
+
+DROP INDEX IF EXISTS idx_schedules_train;
+DROP INDEX IF EXISTS idx_schedules_route;
+
+DROP INDEX IF EXISTS idx_users_username;
+
+DROP INDEX IF EXISTS idx_payments_ticket;
+
+DROP INDEX IF EXISTS idx_routes_stations;
+
 -- tickets
 CREATE INDEX idx_tickets_user_id ON tickets(ticket_user);
 CREATE INDEX idx_tickets_date ON tickets(day_of_ticket);
@@ -14,7 +35,7 @@ CREATE INDEX idx_waitlist_allocation ON waiting_list(train_id, class, day_of_tic
 
 
 -- schedules
-CREATE INDEX idx_schedules_train ON schedules(train_id);
+CREATE INDEX idx_schedules_train ON schedules(train_id, day);
 CREATE INDEX idx_schedules_route ON schedules(route_id);
 
 -- users
