@@ -140,9 +140,9 @@ CREATE TABLE Passengers (
 CREATE TABLE Seats (
     seat_id SERIAL PRIMARY KEY,
     train_id integer REFERENCES trains,
-    seat_num VARCHAR(10) NOT NULL,
-    boggie VARCHAR(10),
-    berth VARCHAR(10),
+    seat_num VARCHAR(20) NOT NULL,
+    boggie VARCHAR(20),
+    berth VARCHAR(20),
     class VARCHAR(20) references fare_per_km
 );
 

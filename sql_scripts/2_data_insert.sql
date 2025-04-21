@@ -130,46 +130,75 @@ INSERT INTO Duties (employee_id, schedule_ids) VALUES
 (2,ARRAY[4,5]); -- Priya handles Chennai Express
 -- Continue for 20 duties...
 
------------------------------
--- 7. Seats (Class-wise configuration)
------------------------------
--- Mumbai Rajdhani (AC only)
-INSERT INTO Seats (seat_id,train_id, seat_num, boggie, berth, class) VALUES
-(1,1,'1A-01','1A','Lower','First AC'),
-(2,1,'1A-02','1A','Upper','First AC'),
-(3,1,'A1-01','A1','Lower','Second AC'),
-(4,1,'B1-01','B1','Side Upper','Third AC'),
-(9,1,'1A-03','1A','Side Lower','First AC'),
-(10,1,'A1-02','A1','Upper','Second AC'),
-(11,1,'A1-03','A1','Middle','Second AC'),
-(12,1,'B1-02','B1','Lower','First AC'),
-(13,1,'B1-03','B1','Middle','First AC');
+CREATE OR REPLACE FUNCTION insert_seats(
+  train_id_param INTEGER,
+  total_seats INTEGER
+) RETURNS VOID AS $$
+DECLARE
+  seats_per_class INTEGER;
+  next_seat_id INTEGER;
+  class_name TEXT;
+  boggie_prefix TEXT;
+  boggie_num INTEGER;
+  seat_in_boggie INTEGER;
+  berth_type TEXT;
+  seat_num TEXT;
+BEGIN
 
--- Deccan Queen (Non-AC)
-INSERT INTO Seats (seat_id,train_id, seat_num, boggie, berth, class) VALUES
-(5,10,'S1-01','S1','Middle','Sleeper'),
-(6,10,'G1-01','G1','Side Upper','General'),
-(14,10,'S1-02','S1','Lower','Sleeper'),
-(15,10,'S1-03','S1','Upper','Sleeper'),
-(16,10,'S1-04','S1','Side Lower','Sleeper'),
-(17,10,'S2-01','S2','Lower','Sleeper'),
-(18,10,'S2-02','S2','Middle','Sleeper'),
-(19,10,'S2-03','S2','Upper','Sleeper'),
-(20,10,'G1-02','G1','Middle','General'),
-(21,10,'G1-03','G1','Lower','General');
+  seats_per_class := total_seats / 5;
+  SELECT COALESCE(MAX(seat_id), 0) + 1 INTO next_seat_id FROM Seats;
+  
+  FOR class_index IN 1..5 LOOP
 
--- Chennai Express (Mixed)
-INSERT INTO Seats(seat_id,train_id, seat_num, boggie, berth, class) VALUES
-(7,5,'B2-05','B2','Upper','Third AC'),
-(8,5,'S3-12','S3','Lower','Sleeper'),
-(22,5,'1A-01','1A','Lower','First AC'),
-(23,5,'1A-02','1A','Upper','First AC'),
-(24,5,'A1-01','A1','Lower','Second AC'),
-(25,5,'A1-02','A1','Middle','Second AC'),
-(26,5,'B1-01','B1','Lower','Third AC'),
-(27,5,'B1-02','B1','Upper','Third AC'),
-(28,5,'S1-01','S1','Lower','Sleeper'),
-(29,5,'G1-01','G1','Middle','General');
+    CASE class_index
+      WHEN 1 THEN class_name := 'First AC'; boggie_prefix := 'A1';
+      WHEN 2 THEN class_name := 'Second AC'; boggie_prefix := 'A2';
+      WHEN 3 THEN class_name := 'Third AC'; boggie_prefix := 'B';
+      WHEN 4 THEN class_name := 'Sleeper'; boggie_prefix := 'S';
+      WHEN 5 THEN class_name := 'General'; boggie_prefix := 'G';
+    END CASE;
+    
+    FOR i IN 1..seats_per_class LOOP
+      boggie_num := (i - 1) / 12 + 1;
+      seat_in_boggie := ((i - 1) % 12) + 1;
+      
+      CASE (i - 1) % 6
+        WHEN 0 THEN berth_type := 'Lower';
+        WHEN 1 THEN berth_type := 'Middle';
+        WHEN 2 THEN berth_type := 'Upper';
+        WHEN 3 THEN berth_type := 'Side Lower';
+        WHEN 4 THEN berth_type := 'Side Upper';
+        WHEN 5 THEN berth_type := 'Side Middle';
+      END CASE;
+      
+      IF class_index <= 2 THEN
+        seat_num := boggie_prefix || '-' || LPAD(seat_in_boggie::TEXT, 2, '0');
+      ELSE
+        seat_num := boggie_prefix || boggie_num || '-' || LPAD(seat_in_boggie::TEXT, 2, '0');
+      END IF;
+      
+      INSERT INTO Seats (seat_id, train_id, seat_num, boggie, berth, class)
+      VALUES (next_seat_id, train_id_param, seat_num::varchar(20), 
+          CASE WHEN class_index <= 2 THEN boggie_prefix 
+             ELSE (boggie_prefix || boggie_num::TEXT)::varchar(20) END,
+          berth_type::varchar(20), class_name::varchar(20));
+      
+      next_seat_id := next_seat_id + 1;
+    END LOOP;
+  END LOOP;
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT insert_seats(1, 600);
+SELECT insert_seats(2, 600);
+SELECT insert_seats(3, 750);
+SELECT insert_seats(4, 750);
+SELECT insert_seats(5, 550);
+SELECT insert_seats(6, 800);
+SELECT insert_seats(7, 900);
+SELECT insert_seats(8, 650);
+SELECT insert_seats(9, 720);
+SELECT insert_seats(10, 880);
 
 -----------------------------
 -- 8. Passengers & Tickets (10+ entries)
@@ -187,7 +216,7 @@ insert into user_roles (role_id , role_name) VALUES
 (2,'employee_role');
 
 INSERT INTO users (user_id,username,password,role_id)VALUES
-(1,'user1','user1123',0),   
+(1,'user1','user1123',0),
 (2,'user2','user2123',0),
 (3,'admin1','admin123',1),
 (4,'employee1','employee123',2),
