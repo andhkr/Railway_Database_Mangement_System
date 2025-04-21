@@ -25,24 +25,24 @@ DROP INDEX IF EXISTS idx_routes_stations;
 DROP INDEX IF EXISTS idx_payments_ticket;
 DROP INDEX IF EXISTS idx_users_username;
 
-DO $$
-BEGIN
-    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'user_role') THEN
-        REASSIGN OWNED BY user_role TO postgres;
-        DROP OWNED BY user_role;
-        DROP ROLE user_role;
-    END IF;
-    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'employee_role') THEN
-        REASSIGN OWNED BY employee_role TO postgres;
-        DROP OWNED BY employee_role;
-        DROP ROLE employee_role;
-    END IF;
-    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'admin_role') THEN
-        REASSIGN OWNED BY admin_role TO postgres;
-        DROP OWNED BY admin_role;
-        DROP ROLE admin_role;
-    END IF;
-END$$;
+-- DO $$
+-- BEGIN
+--     IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'user_role') THEN
+--         -- REASSIGN OWNED BY user_role TO postgres;
+--         DROP OWNED BY user_role;
+--         DROP ROLE user_role;
+--     END IF;
+--     IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'employee_role') THEN
+--         -- REASSIGN OWNED BY employee_role TO postgres;
+--         DROP OWNED BY employee_role;
+--         DROP ROLE employee_role;
+--     END IF;
+--     IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'admin_role') THEN
+--         -- REASSIGN OWNED BY admin_role TO postgres;
+--         DROP OWNED BY admin_role;
+--         DROP ROLE admin_role;
+--     END IF;
+-- END$$;
 
 -- tables and sequence
 create table fare_per_km(
@@ -172,6 +172,7 @@ CREATE TABLE waiting_list (
     end_station_id INTEGER NOT NULL REFERENCES Stations(station_id),
     passenger_id INTEGER NOT NULL REFERENCES Passengers(passenger_id),
 	class varchar(20) references fare_per_km,												-- added class preference for allot function to work
+    created_at TIMESTAMP DEFAULT NOW(),
     CONSTRAINT unique_waiting_list UNIQUE(train_id, day_of_ticket, passenger_id)					-- removed seat_id from unique constraint as it is null 
 );
 

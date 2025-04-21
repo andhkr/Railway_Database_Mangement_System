@@ -186,30 +186,31 @@ insert into user_roles (role_id , role_name) VALUES
 (1,'admin_role'),
 (2,'employee_role');
 
-INSERT INTO users (user_id,username,password,role_id,db_role_name)VALUES
-(1,'user1','user1123',0,'user_1_user1'),   
-(2,'user2','user2123',0,'user_2_user2'),
-(3,'admin1','admin123',1,'admin_3_admin1'),
-(4,'employee1','employee123',2,'employee_4_employee1');
+INSERT INTO users (user_id,username,password,role_id)VALUES
+(1,'user1','user1123',0),   
+(2,'user2','user2123',0),
+(3,'admin1','admin123',1),
+(4,'employee1','employee123',2),
+(5, 'user3', 'user123', 0);
 
-INSERT INTO Tickets (train_id, seat_id, ticket_user, day_of_ticket, start_station_id, end_station_id, passenger_id) VALUES
---1 2 9 4
-(1,1,1,'2023-10-01 14:00',1,4,1), -- Mumbai-Delhi
-(1,3,2,'2023-10-02 09:30',1,9,2); -- Mumbai-Chennai
---9 1 11 12 7
-(5,7,3,'2023-10-02 09:30',1,12,3); -- Mumbai-Chennai
---9 6 15 4
-(10,5,4,'2023-10-02 09:30',9,6,4); -- Mumbai-Chennai
-(10,6,5,'2023-10-02 09:30',6,4,5); -- Mumbai-Chennai
+-- INSERT INTO Tickets (train_id, seat_id, ticket_user, day_of_ticket, start_station_id, end_station_id, passenger_id) VALUES
+-- --1 2 9 4
+-- (1,1,1,'2023-10-01 14:00',1,4,1), -- Mumbai-Delhi
+-- (1,3,2,'2023-10-02 09:30',1,9,2), -- Mumbai-Chennai
+-- --9 1 11 12 7
+-- (5,7,3,'2023-10-02 09:30',1,12,3), -- Mumbai-Chennai
+-- --9 6 15 4
+-- (10,5,4,'2023-10-02 09:30',9,6,4), -- Mumbai-Chennai
+-- (10,6,5,'2023-10-02 09:30',6,4,5); -- Mumbai-Chennai
 
 -----------------------------
 -- 9. Payments (Linked to tickets)
 -----------------------------
-INSERT INTO Payments (ticket_id, amount, bank_details) VALUES
-(1, (SELECT SUM(r.distance * f.price) 
-     FROM Routes r 
-     JOIN Schedules s ON r.route_id = s.route_id
-     JOIN Trains t ON s.train_id = t.train_id
-     JOIN Seats st ON t.train_id = st.train_id
-     JOIN fare_per_km f ON st.class = f.class
-     WHERE t.train_id = 1 AND st.seat_id = 1), 'UPI: 9876XXXXXX');
+-- INSERT INTO Payments (ticket_id, amount, bank_details) VALUES
+-- (1, (SELECT SUM(r.distance * f.price) 
+--      FROM Routes r 
+--      JOIN Schedules s ON r.route_id = s.route_id
+--      JOIN Trains t ON s.train_id = t.train_id
+--      JOIN Seats st ON t.train_id = st.train_id
+--      JOIN fare_per_km f ON st.class = f.class
+--      WHERE t.train_id = 1 AND st.seat_id = 1), 'UPI: 9876XXXXXX');

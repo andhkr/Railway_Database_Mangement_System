@@ -254,8 +254,6 @@ begin
         (select sid from unallocated  ORDER  BY sid limit 1)
     ) into alloc_seat_id;
 
-	raise notice '%', alloc_seat_id;
-
     if alloc_seat_id is null then
         alloc_seat_id := -1;
     end if;
@@ -298,7 +296,7 @@ BEGIN
     SELECT COALESCE(MAX(user_id), 0) + 1 INTO new_user_id FROM users;
 
     -- Insert new user with default role as 'user'
-    INSERT INTO users (user_id, username, password, role_id,db_role_name)
+    INSERT INTO users (user_id, username, password, role_id)
     VALUES (new_user_id, p_username, p_password,
            (SELECT role_id FROM user_roles WHERE role_name = 'user_role'));
     
@@ -622,7 +620,7 @@ BEGIN
 	
 END;
 $$ LANGUAGE plpgsql;
-
+DROP PROCEDURE pay(integer,character varying);
 CREATE OR REPLACE PROCEDURE PAY(TICKET_ID INTEGER, BANK_DETAILS VARCHAR(20))
 AS $$
 DECLARE 
@@ -633,7 +631,7 @@ DECLARE
     amount FLOAT;
 BEGIN
 
-    SELECT 
+    SELECT
         t.train_id, 
         (SELECT st.name FROM stations st WHERE st.station_id = t.start_station_id), 
         (SELECT st.name FROM stations st WHERE st.station_id = t.end_station_id),
@@ -642,10 +640,49 @@ BEGIN
     JOIN seats st ON st.seat_id = t.seat_id
     WHERE t.ticket_id = PAY.TICKET_ID; 
 
-    SELECT GET_AMOUNT(start_station_name, end_station_name, train_id, seat_class) INTO amount;
+    SELECT get_amount(start_station_name, end_station_name, train_id, seat_class) INTO amount;
 	
 	INSERT INTO Payments (ticket_id, amount, bank_details) VALUES
 	(TICKET_ID, amount, BANK_DETAILS);
+
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE PROCEDURE add_ticket_on_cancel(
+    ticket_train_id INTEGER,
+    ticket_class VARCHAR
+)
+AS $$
+DECLARE
+    seat_id INTEGER;
+    wt RECORD;
+BEGIN
+
+    FOR wt IN
+        SELECT * FROM waiting_list 
+        WHERE wt.train_id = ticket_train_id
+        AND wt.class = ticket_class
+        ORDER BY created_at
+    LOOP
+
+        SELECT allot(wt.start_station_id, wt.end_station_id, wt.class, wt.train_id, wt.day_of_ticket) INTO seat_id;
+        IF seat_id != -1 THEN
+
+            INSERT INTO tickets (
+                ticket_id, train_id, seat_id, ticket_user, day_of_ticket, 
+                start_station_id, end_station_id, passenger_id
+            ) VALUES (
+                wt.ticket_id, wt.train_id, seat_id, wt.ticket_user, wt.day_of_ticket,
+                wt.start_station_id, wt.end_station_id, wt.passenger_id
+            );
+
+            DELETE FROM waiting_list
+            WHERE waiting_id = wt.waiting_id;
+            
+            EXIT;
+
+        END IF;
+    END LOOP;
 
 END;
 $$ LANGUAGE plpgsql;

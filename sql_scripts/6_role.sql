@@ -1,6 +1,6 @@
-CREATE ROLE admin_role;
-CREATE ROLE employee_role;
-CREATE ROLE user_role;
+-- CREATE ROLE admin_role;
+-- CREATE ROLE employee_role;
+-- CREATE ROLE user_role;
 
 GRANT ALL PRIVILEGES ON DATABASE postgres TO admin_role;
 
