@@ -56,7 +56,6 @@ $$;
 -- User view for bookings (tickets and waitlist) function
 
 create or replace function user_bookings(usr_id int)
-
 returns table(user_id int, username varchar(20), status text, ticket_id int, train_name varchar(20),
 boarding_station varchar(100), destination_station varchar(100), journey_date timestamp, passenger_name varchar(100),
 seat_num varchar(10), boggie varchar(10), berth varchar(10), class varchar(20), paid_amount numeric)
@@ -106,7 +105,7 @@ SELECT
     NULL AS boggie,
     NULL AS berth,
     wl.class,
-    0 AS paid_amount
+    COALESCE(pay.amount, 0) AS paid_amount
 FROM
     users u
     JOIN waiting_list wl ON u.user_id = wl.ticket_user
@@ -114,8 +113,8 @@ FROM
     JOIN stations start_st ON wl.start_station_id = start_st.station_id
     JOIN stations end_st ON wl.end_station_id = end_st.station_id
     JOIN passengers p ON wl.passenger_id = p.passenger_id
+    LEFT JOIN payments pay ON wl.ticket_id = pay.ticket_id
 	where u.user_id=usr_id;
-
 end;
 $$;
 
@@ -349,8 +348,6 @@ BEGIN
             new_ticket_id, p_train_id, seat_id, p_user_id, p_journey_date,
             start_station_id, end_station_id, p_passenger_id
         );
-        
-        RETURN new_ticket_id;
     ELSE
         -- If no seats available, add to waiting list
         SELECT nextval('shared_ticket_id') INTO new_ticket_id;
@@ -362,9 +359,10 @@ BEGIN
             new_ticket_id, p_train_id, p_user_id, p_journey_date,
             start_station_id, end_station_id, p_passenger_id, p_class
         );
-        
-        RETURN -new_ticket_id; -- Negative to indicate waitlisted
     END IF;
+
+    call pay(new_ticket_id);
+    RETURN new_ticket_id;
 END;
 $$;
 
@@ -620,8 +618,10 @@ BEGIN
 	
 END;
 $$ LANGUAGE plpgsql;
-DROP PROCEDURE pay(integer,character varying);
-CREATE OR REPLACE PROCEDURE PAY(TICKET_ID INTEGER, BANK_DETAILS VARCHAR(20))
+-- DROP PROCEDURE pay(integer,character varying);
+-- CREATE OR REPLACE PROCEDURE PAY(TICKET_ID INTEGER, BANK_DETAILS VARCHAR(20))
+
+CREATE OR REPLACE PROCEDURE PAY(TICKET_ID INTEGER, BANK_DETAILS VARCHAR(20) DEFAULT NULL)
 AS $$
 DECLARE 
     train_id INTEGER;
@@ -630,20 +630,37 @@ DECLARE
     seat_class VARCHAR(50);
     amount FLOAT;
 BEGIN
+    -- First try to get data from the 'tickets' table (Confirmed ticket)
+    BEGIN
+        SELECT 
+            t.train_id, 
+            (SELECT st.name FROM stations st WHERE st.station_id = t.start_station_id), 
+            (SELECT st.name FROM stations st WHERE st.station_id = t.end_station_id),
+            s.class
+        INTO train_id, start_station_name, end_station_name, seat_class
+        FROM tickets t
+        JOIN seats s ON s.seat_id = t.seat_id
+        WHERE t.ticket_id = PAY.TICKET_ID;
 
-    SELECT
-        t.train_id, 
-        (SELECT st.name FROM stations st WHERE st.station_id = t.start_station_id), 
-        (SELECT st.name FROM stations st WHERE st.station_id = t.end_station_id),
-        st.class
-    INTO train_id, start_station_name, end_station_name, seat_class FROM tickets t
-    JOIN seats st ON st.seat_id = t.seat_id
-    WHERE t.ticket_id = PAY.TICKET_ID; 
+    EXCEPTION WHEN NO_DATA_FOUND THEN
+        -- If not found in 'tickets', try 'waiting_list' instead
+        SELECT 
+            wl.train_id,
+            (SELECT st.name FROM stations st WHERE st.station_id = wl.start_station_id), 
+            (SELECT st.name FROM stations st WHERE st.station_id = wl.end_station_id),
+            wl.class
+        INTO train_id, start_station_name, end_station_name, seat_class
+        FROM waiting_list wl
+        WHERE wl.ticket_id = PAY.TICKET_ID;
+    END;
 
-    SELECT get_amount(start_station_name, end_station_name, train_id, seat_class) INTO amount;
-	
-	INSERT INTO Payments (ticket_id, amount, bank_details) VALUES
-	(TICKET_ID, amount, BANK_DETAILS);
+    -- Compute amount
+    SELECT GET_AMOUNT(start_station_name, end_station_name, train_id, seat_class)
+    INTO amount;
+
+    -- Insert payment record
+    INSERT INTO Payments (ticket_id, amount, bank_details)
+    VALUES (TICKET_ID, amount, BANK_DETAILS);
 
 END;
 $$ LANGUAGE plpgsql;
@@ -692,6 +709,5 @@ BEGIN
 
         END IF;
     END LOOP;
-
 END;
 $$ LANGUAGE plpgsql;

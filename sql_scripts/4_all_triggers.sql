@@ -94,3 +94,21 @@ EXECUTE FUNCTION log_changes();
 -- FOR EACH ROW
 -- EXECUTE FUNCTION auto_payment_trigger();
 
+CREATE OR REPLACE FUNCTION validate_ticket_id_exists()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM tickets WHERE ticket_id = NEW.ticket_id) THEN
+        RETURN NEW;
+    ELSIF EXISTS (SELECT 1 FROM waiting_list WHERE ticket_id = NEW.ticket_id) THEN
+        RETURN NEW;
+    ELSE
+        RAISE EXCEPTION 'Invalid ticket_id: % not found in tickets or waiting_list', NEW.ticket_id;
+    END IF;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trigger_validate_ticket_id
+BEFORE INSERT ON payments
+FOR EACH ROW
+EXECUTE FUNCTION validate_ticket_id_exists();
+

@@ -246,7 +246,7 @@ def book_ticket(train_id):
         passenger_phone = request.form.get('passenger_phone')
         
         # Debug print
-        print("Primary passenger:", passenger_name, passenger_gender, passenger_age, passenger_phone)
+        # print("Primary passenger:", passenger_name, passenger_gender, passenger_age, passenger_phone)
         
         # Add primary passenger to database
         primary_passenger_id = add_passenger(passenger_name, passenger_gender, passenger_age, passenger_phone)

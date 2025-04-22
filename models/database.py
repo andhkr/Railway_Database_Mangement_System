@@ -93,7 +93,6 @@ def get_connection_for_request():
     
     # If no user is logged in, return normal connection
     if not user_id:
-        print("IN SESSION")
         return get_db_connection()
     
     # User is logged in, get role-specific connection
@@ -198,7 +197,7 @@ def search_available_trains(start_station, end_station, journey_date, preferred_
 
 def book_new_ticket(user_id, train_id, start_station, end_station, passenger_id, class_name, journey_date):
     query = "SELECT book_ticket(%s, %s, %s, %s, %s, %s, %s)"
-    
+    print(user_id, train_id, start_station, end_station, passenger_id, class_name, journey_date)
     result = execute_query(query, (user_id, train_id, start_station, end_station, passenger_id, class_name, journey_date))
     
     return result[0][0] if result else None

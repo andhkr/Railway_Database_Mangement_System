@@ -5,11 +5,9 @@
 {% block content %}
 <div class="booking-container">
     <h2>Book Train Ticket</h2>
-    
     <form action="{{ url_for('book_ticket', train_id=train_id) }}" method="post" class="booking-form">
         <div class="form-section">
             <h3>Journey Details</h3>
-            
             <div class="form-row">
                 <div class="form-group">
                     <label for="start_station">From:</label>
@@ -22,7 +20,6 @@
                         {% endfor %}
                     </select>
                 </div>
-                
                 <div class="form-group">
                     <label for="end_station">To:</label>
                     <select id="end_station" name="end_station" required>
@@ -111,14 +108,13 @@
                 </p>
             </div>
         </div>
-        
         <div class="booking-summary">
             <h3>Booking Summary</h3>
             <p>Journey: <span id="journey-summary">-</span></p>
             <p>Date: <span id="date-summary">-</span></p>
             <p>Class: <span id="class-summary">-</span></p>
             <p>Passengers: <span id="passengers-summary">1</span></p>
-            <p>Total Fare: <span id="total-fare">Calculating...</span></p>
+            <!-- <p>Total Fare: <span id="total-fare">Calculating...</span></p> -->
         </div>
         
         <button type="submit" class="btn btn-primary">Confirm Booking</button>
@@ -324,43 +320,43 @@
         }
         
         // Calculate fare
-        calculateTotalFare();
+        // calculateTotalFare();
     }
     
     // Calculate total fare based on class, passenger count, and distance
-    function calculateTotalFare() {
-        const selectedClass = document.getElementById('class');
-        const totalPassengers = 1 + document.querySelectorAll('#additional-passengers-container .passenger-form').length;
-        const startStation = document.getElementById('start_station').value;
-        const endStation = document.getElementById('end_station').value;
+    // function calculateTotalFare() {
+    //     const selectedClass = document.getElementById('class');
+    //     const totalPassengers = 1 + document.querySelectorAll('#additional-passengers-container .passenger-form').length;
+    //     const startStation = document.getElementById('start_station').value;
+    //     const endStation = document.getElementById('end_station').value;
         
-        if (selectedClass.selectedIndex > 0 && startStation && endStation) {
-            const fareElement = document.getElementById('total-fare');
+    //     if (selectedClass.selectedIndex > 0 && startStation && endStation) {
+    //         const fareElement = document.getElementById('total-fare');
             
-            fareElement.textContent = "Calculating...";
+    //         fareElement.textContent = "Calculating...";
             
-            // Simulate server response - in a real app this would be an AJAX call
-            setTimeout(() => {
-                // Extract price from the selected class option text
-                const classText = selectedClass.options[selectedClass.selectedIndex].text;
-                const priceMatch = classText.match(/₹(\d+)/);
+    //         // Simulate server response - in a real app this would be an AJAX call
+    //         setTimeout(() => {
+    //             // Extract price from the selected class option text
+    //             const classText = selectedClass.options[selectedClass.selectedIndex].text;
+    //             const priceMatch = classText.match(/₹(\d+)/);
                 
-                if (priceMatch) {
-                    const pricePerKm = parseInt(priceMatch[1]);
-                    // Example distance calculation - in real app would be calculated based on stations
-                    const estimatedDistance = 100;
-                    const baseFare = pricePerKm * estimatedDistance;
+    //             if (priceMatch) {
+    //                 const pricePerKm = parseInt(priceMatch[1]);
+    //                 // Example distance calculation - in real app would be calculated based on stations
+    //                 const estimatedDistance = 100;
+    //                 const baseFare = pricePerKm * estimatedDistance;
                     
-                    // Simple calculation without age discounts for now
-                    const totalFare = baseFare * totalPassengers;
+    //                 // Simple calculation without age discounts for now
+    //                 const totalFare = baseFare * totalPassengers;
                     
-                    fareElement.textContent = `₹${totalFare.toFixed(2)} (Estimated)`;
-                } else {
-                    fareElement.textContent = "Please select journey details";
-                }
-            }, 300);
-        }
-    }
+    //                 fareElement.textContent = `₹${totalFare.toFixed(2)} (Estimated)`;
+    //             } else {
+    //                 fareElement.textContent = "Please select journey details";
+    //             }
+    //         }, 300);
+    //     }
+    // }
     
     // Add event listeners to update booking summary when details change
     document.getElementById('start_station').addEventListener('change', updateBookingSummary);

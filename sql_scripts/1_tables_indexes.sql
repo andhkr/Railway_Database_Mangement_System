@@ -28,17 +28,17 @@ DROP TABLE IF EXISTS audit_logs CASCADE;
 -- DO $$
 -- BEGIN
 --     IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'user_role') THEN
---         -- REASSIGN OWNED BY user_role TO postgres;
+--         REASSIGN OWNED BY user_role TO postgres;
 --         DROP OWNED BY user_role;
 --         DROP ROLE user_role;
 --     END IF;
 --     IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'employee_role') THEN
---         -- REASSIGN OWNED BY employee_role TO postgres;
+--         REASSIGN OWNED BY employee_role TO postgres;
 --         DROP OWNED BY employee_role;
 --         DROP ROLE employee_role;
 --     END IF;
 --     IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'admin_role') THEN
---         -- REASSIGN OWNED BY admin_role TO postgres;
+--         REASSIGN OWNED BY admin_role TO postgres;
 --         DROP OWNED BY admin_role;
 --         DROP ROLE admin_role;
 --     END IF;
@@ -83,7 +83,8 @@ CREATE TABLE Trains (
     start_station_id INTEGER NOT NULL references Stations,
     end_station_id INTEGER NOT NULL references Stations,
     name VARCHAR(100) NOT NULL,
-    num_seats INTEGER NOT NULL
+    num_seats INTEGER NOT NULL,
+    CONSTRAINT unique_train_route_name UNIQUE (start_station_id, end_station_id, name)
 );
 
 CREATE TABLE user_roles (
@@ -94,7 +95,7 @@ CREATE TABLE user_roles (
 
 Create TABLE users(
     user_id INTEGER primary key,
-    username varchar(20),
+    username varchar(20) UNIQUE,
     password varchar(255),
     role_id integer REFERENCES user_roles(role_id)
 );
@@ -155,7 +156,7 @@ CREATE TABLE tickets (
     train_id INTEGER NOT NULL REFERENCES Trains(train_id),
     seat_id INTEGER NOT NULL REFERENCES Seats(seat_id),
     ticket_user integer references users,
-    day_of_ticket timestamp,
+    day_of_ticket timestamp NOT NULL,
     start_station_id INTEGER NOT NULL REFERENCES Stations(station_id),
     end_station_id INTEGER NOT NULL REFERENCES Stations(station_id),
     passenger_id INTEGER NOT NULL REFERENCES Passengers(passenger_id),
@@ -179,7 +180,7 @@ CREATE TABLE waiting_list (
 -- Payments table
 CREATE TABLE Payments (
     payment_id SERIAL PRIMARY KEY,
-    ticket_id INTEGER NOT NULL REFERENCES Tickets(ticket_id),
+    ticket_id INTEGER NOT NULL,
     amount DECIMAL(10, 2) NOT NULL,
     bank_details VARCHAR(255)
 );
