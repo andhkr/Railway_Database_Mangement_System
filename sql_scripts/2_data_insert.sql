@@ -203,12 +203,12 @@ SELECT insert_seats(10, 880);
 -----------------------------
 -- 8. Passengers & Tickets (10+ entries)
 -----------------------------
-INSERT INTO Passengers (name, gender, age, phone, email, address) VALUES
-('Aarav Patel','Male',28,'7654321098','aarav@gmail.com','Ahmedabad'),
-('Ananya Reddy','Female',24,'6543210987','ananya@yahoo.com','Hyderabad'),
-('Vikram Singh','Male',35,'9876543211','vikram@outlook.com','New Delhi'),
-('Meera Iyer','Female',42,'8765432112','meera@gmail.com','Bangalore'),
-('Raj Mehta','Male',31,'9988776655','raj@yahoo.com','Mumbai');
+INSERT INTO Passengers (name, gender, age, phone) VALUES
+('Aarav Patel','Male',28,'7654321098'),
+('Ananya Reddy','Female',24,'6543210987'),
+('Vikram Singh','Male',35,'9876543211'),
+('Meera Iyer','Female',42,'8765432112'),
+('Raj Mehta','Male',31,'9988776655');
 
 insert into user_roles (role_id , role_name) VALUES
 (0,'user_role'),

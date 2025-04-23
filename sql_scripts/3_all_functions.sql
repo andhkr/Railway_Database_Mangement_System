@@ -5,7 +5,7 @@ SELECT
     t.name AS train_name,
     start_st.name AS start_station,
     end_st.name AS end_station,
-    COUNT(DISTINCT s.schedule_id) AS schedule_count,
+    -- COUNT(DISTINCT s.schedule_id) AS schedule_count,
     COUNT(DISTINCT tk.ticket_id) AS active_tickets,
     COUNT(DISTINCT wl.ticket_id) AS waitlisted_tickets
 FROM 
@@ -18,10 +18,22 @@ FROM
 GROUP BY 
     t.train_id, t.name, start_st.name, end_st.name;
 
+create or replace view admin_duties_view as 
+SELECT 
+    d.duty_id,
+    d.employee_id,
+    e.name AS employee_name,
+    d.schedule_ids
+FROM 
+    Duties d
+JOIN 
+    Employees e ON d.employee_id = e.employee_id
+ORDER BY 
+    d.duty_id;
+
 -- -- convert this to function so that each pemployee can only see thier duty
-
+    
 create or replace function employee_duties(empl_id int)
-
 returns table(employee_id int, employee_name varchar(100),role varchar(50), duty_id int, schedule_id int,
 departure_time time,arrival_time time,day int, train_name varchar(100), departure_station varchar(100),
 arrival_station varchar(100))
@@ -550,7 +562,7 @@ BEGIN
         at.journey_day,
         (at.num_seats - at.booked_seats)::integer AS available_seats,
         CASE WHEN p_preferred_class IS NULL 
-            THEN get_amount(p_start_station, p_end_station, at.train_id, 'Sleeper')::numeric
+            THEN get_amount(p_start_station, p_end_station, at.train_id, 'General')::numeric
             ELSE get_amount(p_start_station, p_end_station, at.train_id, p_preferred_class)::numeric
         END AS fare,
         at.travel_time,
