@@ -372,5 +372,5 @@ def api_stations():
     return jsonify(stations)
 
 if __name__ == '__main__':
-    initialize_database()
+    # initialize_database()
     app.run(debug=True)
