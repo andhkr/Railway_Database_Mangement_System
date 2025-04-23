@@ -202,7 +202,7 @@ begin
 	select station_rank
 	into start_ind
     from (
-        select station_name, row_number() over (order by station_id) as station_rank
+        select station_name, row_number() over () as station_rank
         from get_route(train_id_arg)
     ) ranked
     where station_name = start_station;
@@ -210,13 +210,13 @@ begin
 	select station_rank
 	into end_ind   
 	from (
-       	select station_name, row_number() over (order by station_id) as station_rank
+       	select station_name, row_number() over () as station_rank
         from get_route(train_id_arg)
     ) ranked
     where station_name = end_station;
 
     with ranked_stations as (
-        select station_id, day, row_number() over (order by station_id) as station_rank
+        select station_id, day, row_number() over () as station_rank
         from get_route(train_id_arg)
     ),
     allocated as (
@@ -374,6 +374,7 @@ BEGIN
     END IF;
 
     call pay(new_ticket_id);
+    commit;
     RETURN new_ticket_id;
 END;
 $$;
