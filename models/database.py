@@ -8,7 +8,7 @@ from flask import session
 # Create a global connection pool
 connection_pool     = None
 session_role_id     = None
-db_role_name = {'user_role','admin_role','employee_role'}
+db_role_name = ['user_role','admin_role','employee_role']
 
 def initialize_connection_pool():
     """Initialize the connection pool"""
@@ -70,14 +70,15 @@ def get_user_db_connection(role_id):
     """
     conn = get_db_connection()
     cur = conn.cursor()
-    
+    conn.autocommit = True
     try:        
         # Set the role for this connection
         cur.execute(f"SET ROLE {db_role_name[role_id]}")
-        
+        conn.autocommit = False
+        # print("role_name:",db_role_name[role_id])
         return conn
     except Exception as e:
-        print(f"Error setting user role: {e}")
+        print(f"Error setting  role: {e}")
         return conn  # Return normal connection on error
     finally:
         cur.close()
@@ -90,9 +91,9 @@ def get_connection_for_request():
     """
     # Check if user is logged in by looking for user_id in session
     user_id = session.get('role_id')
-    
+    # print("role:",type(user_id))
     # If no user is logged in, return normal connection
-    if not user_id:
+    if user_id is None:
         return get_db_connection()
     
     # User is logged in, get role-specific connection
@@ -107,7 +108,7 @@ def execute_query(query, params=None, fetch=True):
         with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
             cur.execute(query, params)
             result = cur.fetchall() if fetch else None
-            conn.commit()  # ✅ Always commit before connection closes
+            conn.commit()  # Always commit before connection closes
             return result if fetch else True
     except Exception as e:
         print(f"Database error: {e}")
@@ -118,47 +119,6 @@ def execute_query(query, params=None, fetch=True):
         if conn:
             release_db_connection(conn)  # Return to the pool
 
-
-# def call_function(function_name, params=None):
-#     """Call a PostgreSQL function and return results"""
-#     conn = None
-#     try:
-#         conn = get_db_connection()
-#         with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
-#             if params:
-#                 cur.callproc(function_name, params)
-#             else:
-#                 cur.callproc(function_name)
-#             result = cur.fetchall()
-#             return result
-#     except Exception as e:
-#         print(f"Function call error: {e}")
-#         if conn:
-#             conn.rollback()
-#         return None
-#     finally:
-#         if conn:
-#             release_db_connection(conn)  # Return to the pool
-
-
-
-# def get_connection_for_request():
-#     """
-#     Returns the appropriate database connection based on user login status
-#     - Normal connection for anonymous users
-#     - Role-specific connection for logged-in users
-#     """
-#     # Check if user is logged in by looking for user_id in session
-#     user_id = session.get('user_id')
-    
-#     # If no user is logged in, return normal connection
-#     if not user_id:
-#         return get_db_connection()
-    
-#     # User is logged in, get role-specific connection
-#     return get_user_db_connection(user_id)
-
-# User authentication methods
 def get_user_by_username(username):
     query = "SELECT user_id, username, password, role_id FROM users WHERE username = %s"
     print(username)
@@ -169,7 +129,7 @@ def get_user_by_username(username):
 def register_user(username, password, email, phone):
     query = "SELECT register_user(%s, %s, %s, %s)"
     result = execute_query(query, (username, password, email, phone))
-    print("register user:",result)
+    # print("register user:",result)
     return result[0][0] if result else None
 
 def change_user_password(user_id, new_password):
@@ -197,9 +157,8 @@ def search_available_trains(start_station, end_station, journey_date, preferred_
 
 def book_new_ticket(user_id, train_id, start_station, end_station, passenger_id, class_name, journey_date):
     query = "SELECT book_ticket(%s, %s, %s, %s, %s, %s, %s)"
-    print(user_id, train_id, start_station, end_station, passenger_id, class_name, journey_date)
+    # print(user_id, train_id, start_station, end_station, passenger_id, class_name, journey_date)
     result = execute_query(query, (user_id, train_id, start_station, end_station, passenger_id, class_name, journey_date))
-    
     return result[0][0] if result else None
 
 def get_ticket_status(ticket_id):
@@ -243,4 +202,20 @@ def add_passenger(name, gender, age, phone=None, email=None, address=None):
     result = execute_query(query, (name, gender, age, phone, email, address))
     return result[0][0] if result else None
 
-# def update_database(query)
+
+def get_employee_table():
+    query = """
+    SELECT employee_id, name, gender,  age, phone, email, address, role, salary
+    FROM Employees ORDER BY employee_id
+            """
+    return execute_query(query)
+
+def get_schedules_table():
+    query = """
+    select schedule_id, train_id, route_id, departure_time, arrival_time, day from Schedules
+    """
+    return execute_query(query)
+
+def get_duties_overview():
+    query = "select * from admin_duties_view"
+    return execute_query(query)

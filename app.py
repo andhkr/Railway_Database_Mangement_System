@@ -9,7 +9,7 @@ from models.database import (
     search_available_trains, book_new_ticket, get_ticket_status,
     cancel_user_ticket, get_user_bookings, get_admin_train_overview,
     get_employee_duties, get_all_stations, get_train_classes, add_passenger,get_db_connection,initialize_connection_pool,check_db_connection,
-    release_db_connection,session_role_id
+    release_db_connection,session_role_id,get_connection_for_request,get_employee_table,get_schedules_table,get_duties_overview
 )
 from config import SECRET_KEY
 import json
@@ -173,13 +173,25 @@ def dashboard():
 
 @app.route('/admin/dashboard')
 def admin_dashboard():
-    """Admin dashboard route"""
-    if not is_logged_in() or get_user_role() != 1:
-        flash('Unauthorized access')
-        return redirect(url_for('login'))
-    
-    trains_overview = get_admin_train_overview()
-    return render_template('admin_dashboard.html', trains=trains_overview)
+    """Render the admin dashboard with train, employee, schedule, and duty data"""
+    try:
+        trains_overview = get_admin_train_overview()
+        employees       = get_employee_table()
+        schedules       = get_schedules_table()
+        duties          = get_duties_overview()
+        
+        return render_template(
+            'admin_dashboard.html', 
+            trains=trains_overview,
+            employees=employees,
+            schedules=schedules,
+            duties=duties
+        )
+        
+    except Exception as e:
+        print(f"Error loading admin dashboard: {str(e)}")
+        flash(f'Error loading dashboard: {str(e)}', 'error')
+        return redirect(url_for('home'))
 
 @app.route('/employee/dashboard')
 def employee_dashboard():
@@ -224,111 +236,114 @@ def search_trains():
 
 @app.route('/book-ticket/<int:train_id>', methods=['GET', 'POST'])
 @app.route('/book_ticket/<int:train_id>', methods=['GET', 'POST'])
+@app.route('/book_ticket/<int:train_id>', methods=['GET', 'POST'])
 def book_ticket(train_id):
     """Ticket booking route"""
     if not is_logged_in():
         return redirect(url_for('login'))
-    
-    # Get available classes for this train
+
+    # Get form data options
     train_classes = get_train_classes()
     stations = get_all_stations()
-    
+
     if request.method == 'POST':
-        start_station = request.form.get('start_station')
-        end_station = request.form.get('end_station')
-        selected_class = request.form.get('class')
-        journey_date = request.form.get('journey_date')
-        
-        # Primary passenger data (using your existing field names)
-        passenger_name = request.form.get('passenger_name')
-        passenger_age = request.form.get('passenger_age')
-        passenger_gender = request.form.get('passenger_gender')
-        passenger_phone = request.form.get('passenger_phone')
-        
-        # Debug print
-        # print("Primary passenger:", passenger_name, passenger_gender, passenger_age, passenger_phone)
-        
-        # Add primary passenger to database
-        primary_passenger_id = add_passenger(passenger_name, passenger_gender, passenger_age, passenger_phone)
-        
-        if not primary_passenger_id:
-            flash('Error adding passenger details')
-            return redirect(url_for('search_trains'))
-        
-        # Book ticket for primary passenger
-        primary_ticket_id = book_new_ticket(
-            session.get('user_id'),
-            train_id,
-            start_station,
-            end_station,
-            primary_passenger_id,
-            selected_class,
-            journey_date
-        )
-        
-        if not primary_ticket_id:
-            flash('Ticket booking failed for primary passenger. Train might be full.')
-            return redirect(url_for('search_trains'))
-        
-        # Handle additional passengers if any
-        additional_passengers_json = request.form.get('additional_passengers', '[]')
+        conn = None
         try:
-            additional_passengers = json.loads(additional_passengers_json)
-            
-            # Debug print
-            print(f"Found {len(additional_passengers)} additional passengers")
-            
-            # Process each additional passenger
-            additional_ticket_ids = []
-            for passenger in additional_passengers:
-                if passenger:  # Skip null/None values
-                    print(f"Processing additional passenger: {passenger}")
-                    # Extract passenger details
-                    add_name = passenger.get('name')
-                    add_age = passenger.get('age')
-                    add_gender = passenger.get('gender')
-                    add_phone = passenger.get('phone')
-                    
-                    if add_name and add_age and add_gender and add_phone:
-                        # Add additional passenger to database
-                        add_passenger_id = add_passenger(add_name, add_gender, add_age, add_phone)
-                        
-                        if add_passenger_id:
-                            # Book ticket for additional passenger
-                            add_ticket_id = book_new_ticket(
-                                session.get('user_id'),
-                                train_id,
-                                start_station,
-                                end_station,
-                                add_passenger_id,
-                                selected_class,
-                                journey_date
-                            )
-                            
-                            if add_ticket_id:
-                                additional_ticket_ids.append(add_ticket_id)
-                            else:
-                                flash(f'Booking failed for passenger {add_name}. Train might be full.')
-                        else:
-                            flash(f'Error adding details for passenger {add_name}')
-            
-            # Success message
-            if len(additional_ticket_ids) > 0:
-                flash(f'Successfully booked {1 + len(additional_ticket_ids)} tickets! Primary PNR: {primary_ticket_id}')
-            else:
-                flash(f'Ticket booked successfully! Your PNR is {primary_ticket_id}')
-                
+            # Parse form inputs
+            start_station = request.form['start_station']
+            end_station = request.form['end_station']
+            selected_class = request.form['class']
+            journey_date = request.form['journey_date']
+
+            # Primary passenger data
+            passenger_name = request.form['passenger_name']
+            passenger_age = int(request.form['passenger_age'])
+            passenger_gender = request.form['passenger_gender']
+            passenger_phone = request.form['passenger_phone']
+
+            # Connect and begin transaction
+            conn = get_connection_for_request()
+            conn.autocommit = False
+            cur = conn.cursor()
+
+            # Insert primary passenger
+            cur.execute(
+                """
+                INSERT INTO passengers (name, gender, age, phone)
+                VALUES (%s, %s, %s, %s)
+                RETURNING passenger_id
+                """,
+                (passenger_name, passenger_gender, passenger_age, passenger_phone)
+            )
+            primary_pid = cur.fetchone()[0]
+            if not primary_pid:
+                raise Exception('Could not add primary passenger')
+
+            # Book primary ticket via stored function
+            cur.execute(
+                "SELECT book_ticket(%s, %s, %s, %s, %s, %s, %s)",
+                (session['user_id'], train_id, start_station, end_station,
+                 primary_pid, selected_class, journey_date)
+            )
+            primary_ticket = cur.fetchone()[0]
+            if not primary_ticket:
+                raise Exception('Primary ticket booking failed (likely full)')
+
+            # Handle additional passengers JSON list
+            additional_json = request.form.get('additional_passengers', '[]')
+            additional = json.loads(additional_json)
+            booked_count = 1
+
+            for p in additional:
+                name = p.get('name')
+                age = p.get('age')
+                gender = p.get('gender')
+                phone = p.get('phone')
+                if not all([name, age, gender, phone]):
+                    continue
+
+                # Insert additional passenger
+                cur.execute(
+                    "INSERT INTO passengers (name, gender, age, phone) VALUES (%s, %s, %s, %s) RETURNING passenger_id",  
+                    (name, gender, int(age), phone)
+                )
+                add_pid = cur.fetchone()[0]
+                if not add_pid:
+                    raise Exception(f'Failed to add passenger {name}')
+
+                # Book additional ticket
+                cur.execute(
+                    "SELECT book_ticket(%s, %s, %s, %s, %s, %s, %s)",
+                    (session['user_id'], train_id, start_station, end_station,
+                     add_pid, selected_class, journey_date)
+                )
+                ticket_id = cur.fetchone()[0]
+                if not ticket_id:
+                    raise Exception(f'Booking failed for passenger {name}')
+                booked_count += 1
+
+            conn.commit()
+
+            flash(f'Successfully booked {booked_count} ticket(s)! PNR: {primary_ticket}', 'success')
             return redirect(url_for('my_tickets'))
-            
-        except json.JSONDecodeError:
-            # If there's an error parsing the JSON, just proceed with the primary passenger
-            flash(f'Ticket booked successfully! Your PNR is {primary_ticket_id}')
-            return redirect(url_for('my_tickets'))
-            
-    return render_template('book_ticket.html', 
-                          train_id=train_id, 
-                          stations=stations, 
-                          train_classes=train_classes)
+
+        except Exception as e:
+            if conn:
+                conn.rollback()
+            flash(str(e), 'error')
+            return redirect(url_for('search_trains'))
+
+        finally:
+            if conn:
+                conn.close()
+
+    # GET request
+    return render_template(
+        'book_ticket.html',
+        train_id=train_id,
+        stations=stations,
+        train_classes=train_classes
+    )
 
 @app.route('/my-tickets')
 def my_tickets():
@@ -371,6 +386,208 @@ def api_stations():
     stations = get_all_stations()
     return jsonify(stations)
 
+@app.route('/add_employee', methods=['POST'])
+def add_employee():
+    conn = None
+    if request.method == 'POST':
+        try:
+            # Get employee data from form
+            employee_id = request.form['EmployeeID']
+            name = request.form['name']
+            gender = request.form['gender']
+            age = request.form['age'] if request.form['age'] else None
+            phone = request.form['phone']
+            email = request.form['email']
+            address = request.form['address']
+            role = request.form['role']
+            salary = request.form['salary'] if request.form['salary'] else None
+            # Get duties data
+            schedule_ids_str = request.form['schedule_ids']
+            # Convert comma-separated string to array of integers
+            schedule_ids = [int(id.strip()) for id in schedule_ids_str.split(',') if id.strip()]
+            
+            # Get user account data
+            username = request.form['username']
+            password = request.form['password']
+            hashed_password = generate_password_hash(password)
+          
+            # Connect to database
+            conn = get_connection_for_request()
+            cur = conn.cursor()
+            
+            # Begin transaction
+            conn.autocommit = False
+            
+            # 1. Insert into Employees table and get the new employee_id
+            cur.execute(
+                """
+                INSERT INTO Employees (employee_id,name, gender, age, phone, email, address, role, salary)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                RETURNING employee_id
+                """, 
+                (employee_id,name, gender, age, phone, email, address, role, salary)
+            )
+            
+            # 2. Insert into users table
+            # First, get the role_id for 'employee'
+            cur.execute("SELECT role_id FROM user_roles WHERE role_name = 'employee_role'")
+            role_id = cur.fetchone()[0]
+            
+            cur.execute(
+                """
+                INSERT INTO users (user_id,username, password, role_id)
+                VALUES (%s, %s, %s, %s)
+                """,
+                (employee_id, username, hashed_password, role_id)
+            )
+            
+            # 3. Insert into Duties table
+            print(schedule_ids)
+            if schedule_ids:
+                cur.execute(
+                    """
+                    INSERT INTO Duties (employee_id, schedule_ids)
+                    VALUES (%s, %s::integer[])
+                    """,
+                    (employee_id, schedule_ids)
+                )
+            
+            # Commit the transaction
+            conn.commit()
+            flash('Employee added successfully!', 'success')
+            
+        except psycopg2.IntegrityError as e:
+            conn.rollback()
+            if "unique_duty" in str(e):
+                flash('This employee already has assigned duties.', 'error')
+            elif "unique" in str(e) and "username" in str(e):
+                flash('Username already exists. Please choose another.', 'error')
+            else:
+                flash(f'Database error: {str(e)}', 'error')
+        except Exception as e:
+            conn.rollback()
+            flash(f'Error: {str(e)}', 'error')
+        finally:
+            if conn:
+                conn.close()
+        
+        return redirect(url_for('admin_dashboard'))
+    
+    # This should not be reached if the route is POST only
+    return redirect(url_for('admin_dashboard'))
+
+@app.route('/delete_employee')
+def delete_employee():
+    """Delete an employee"""
+    try:
+        employee_id = request.args.get('id')
+        if not employee_id:
+            flash('Employee ID is required', 'error')
+            return redirect(url_for('admin_dashboard'))
+        
+        conn = get_connection_for_request()
+        cur = conn.cursor()
+
+        # Begin transaction
+        conn.autocommit = False
+        
+        # First delete from duties (due to foreign key constraint)
+        cur.execute("DELETE FROM Duties WHERE employee_id = %s", (employee_id,))
+
+        cur.execute("DELETE FROM users WHERE user_id = %s", (employee_id,))
+        
+        # Finally delete the employee
+        cur.execute("DELETE FROM Employees WHERE employee_id = %s", (employee_id,))
+        
+        conn.commit()
+        flash('Employee deleted successfully', 'success')
+        
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        flash(f'Error deleting employee: {str(e)}', 'error')
+    finally:
+        if conn:
+            release_db_connection(conn)
+            
+    return redirect(url_for('admin_dashboard'))
+
+@app.route('/add_Duty', methods=['POST'])
+def add_Duty():
+    conn = None
+    if request.method == 'POST':
+        try:
+            # Get employee data from form
+            employee_id = request.form['employeeID']
+            # Get duties data
+            schedule_ids_str = request.form['schedule_ids']
+            # Convert comma-separated string to array of integers
+            schedule_ids = [int(id.strip()) for id in schedule_ids_str.split(',') if id.strip()]
+            
+            # Connect to database
+            conn = get_connection_for_request()
+            cur = conn.cursor()
+            
+            # Begin transaction
+            conn.autocommit = False
+
+            if schedule_ids:
+                cur.execute(
+                    """
+                    INSERT INTO Duties (employee_id, schedule_ids)
+                    VALUES (%s, %s::integer[])
+                    """,
+                    (employee_id, schedule_ids)
+                )
+            
+            # Commit the transaction
+            conn.commit()
+            flash('Duty added successfully!', 'success')
+            
+        except psycopg2.IntegrityError as e:
+            conn.rollback()
+            if "unique_duty" in str(e):
+                flash('This employee already has assigned duties.', 'error')
+            else:
+                flash(f'Database error: {str(e)}', 'error')
+        except Exception as e:
+            conn.rollback()
+            flash(f'Error: {str(e)}', 'error')
+        finally:
+            if conn:
+                conn.close()
+        
+        return redirect(url_for('admin_dashboard'))
+    
+    # This should not be reached if the route is POST only
+    return redirect(url_for('admin_dashboard'))
+
+@app.route('/delete_duty')
+def delete_duty():
+    """Delete a duty assignment"""
+    try:
+        duty_id = request.args.get('id')
+        if not duty_id:
+            flash('Duty ID is required', 'error')
+            return redirect(url_for('admin_dashboard'))
+        
+        conn = get_connection_for_request()
+        cur = conn.cursor()
+        
+        cur.execute("DELETE FROM Duties WHERE duty_id = %s", (duty_id,))
+        
+        conn.commit()
+        flash('Duty deleted successfully', 'success')
+        
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        flash(f'Error deleting duty: {str(e)}', 'error')
+    finally:
+        if conn:
+            release_db_connection(conn)
+
+    return redirect(url_for('admin_dashboard'))
 if __name__ == '__main__':
     # initialize_database()
     app.run(debug=True)

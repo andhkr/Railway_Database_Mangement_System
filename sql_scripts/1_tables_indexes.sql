@@ -45,6 +45,7 @@ DROP TABLE IF EXISTS audit_logs CASCADE;
 -- END$$;
 
 -- tables and sequence
+
 create table fare_per_km(
 	class varchar(20) primary key not null,
 	price float
@@ -66,7 +67,7 @@ CREATE TABLE Routes (
 
 -- Employees table
 CREATE TABLE Employees (
-    employee_id SERIAL PRIMARY KEY,
+    employee_id INT PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
     gender VARCHAR(20),
     age INTEGER,
@@ -100,12 +101,12 @@ Create TABLE users(
     role_id integer REFERENCES user_roles(role_id)
 );
 
--- Password reset functionality
-CREATE TABLE password_reset_tokens (
-    user_id INTEGER PRIMARY KEY REFERENCES users(user_id),
-    token VARCHAR(64) NOT NULL,
-    expiry_date TIMESTAMP NOT NULL
-);
+-- -- Password reset functionality
+-- CREATE TABLE password_reset_tokens (
+--     user_id INTEGER PRIMARY KEY REFERENCES users(user_id),
+--     token VARCHAR(64) NOT NULL,
+--     expiry_date TIMESTAMP NOT NULL
+-- );
 
 -- Schedules table
 CREATE TABLE Schedules (
@@ -132,9 +133,9 @@ CREATE TABLE Passengers (
     name VARCHAR(100) NOT NULL,
     gender VARCHAR(20),
     age INTEGER,
-    phone VARCHAR(20),
-    email VARCHAR(100),
-    address TEXT
+    phone VARCHAR(20)
+    -- email VARCHAR(100),
+    -- address TEXT
 );
 
 -- Seats table
