@@ -1,15 +1,9 @@
 -- Trigger to automatically update waiting list when a ticket is cancelled
 CREATE OR REPLACE FUNCTION ticket_cancel_trigger()
 RETURNS TRIGGER AS $$
-DECLARE
-    CLASS_LABEL VARCHAR;
 BEGIN
-    -- Call the existing procedure to process waiting list
-    SELECT s.class INTO CLASS_LABEL FROM seats s
-    WHERE s.seat_id = OLD.seat_id;
 
-    CALL add_ticket_on_cancel(OLD.train_id, CLASS_LABEL);
-    
+    CALL add_ticket_on_cancel(OLD.ticket_id);    
     RETURN NULL;
 
 END;

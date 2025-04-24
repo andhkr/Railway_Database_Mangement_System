@@ -695,7 +695,7 @@ begin
 
 
 	-- deleting from tickets table for allotment function to work
-	delete from tickets where ticket_id=tk_id;
+	-- delete from tickets where ticket_id=tk_id;
 	-- also need to refund the payment and delete from the payment table
 
 

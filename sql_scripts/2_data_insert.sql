@@ -189,16 +189,16 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-SELECT insert_seats(1, 600);
-SELECT insert_seats(2, 600);
-SELECT insert_seats(3, 750);
-SELECT insert_seats(4, 750);
-SELECT insert_seats(5, 550);
-SELECT insert_seats(6, 800);
-SELECT insert_seats(7, 900);
-SELECT insert_seats(8, 650);
-SELECT insert_seats(9, 720);
-SELECT insert_seats(10, 880);
+SELECT insert_seats(1, 5);
+SELECT insert_seats(2, 5);
+SELECT insert_seats(3, 5);
+SELECT insert_seats(4, 5);
+SELECT insert_seats(5, 5);
+SELECT insert_seats(6, 5);
+SELECT insert_seats(7, 5);
+SELECT insert_seats(8, 5);
+SELECT insert_seats(9, 5);
+SELECT insert_seats(10, 5);
 
 -----------------------------
 -- 8. Passengers & Tickets (10+ entries)
