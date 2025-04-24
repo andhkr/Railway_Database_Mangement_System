@@ -1,5 +1,5 @@
 import psycopg2
-from psycopg2 import pool
+from psycopg2 import pool,sql
 import psycopg2.extras
 from config import DB_HOST, DB_NAME, DB_USER, DB_PASSWORD, DB_PORT,DB_POOL_MIN_CONN, DB_POOL_MAX_CONN
 
@@ -104,7 +104,7 @@ def execute_query(query, params=None, fetch=True):
     conn = None
     try:
         conn = get_connection_for_request()
-
+        conn.autocommit = False
         with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
             cur.execute(query, params)
             result = cur.fetchall() if fetch else None
@@ -212,10 +212,26 @@ def get_employee_table():
 
 def get_schedules_table():
     query = """
-    select schedule_id, train_id, route_id, departure_time, arrival_time, day from Schedules
+    select schedule_id, train_id, route_id, departure_time, arrival_time, day from Schedules order by schedule_id
     """
     return execute_query(query)
 
 def get_duties_overview():
     query = "select * from admin_duties_view"
     return execute_query(query)
+
+def update_schedule(schedule_id, field, value):
+    allowed_fields = ['train_id', 'route_id', 'departure_time', 'arrival_time', 'day']
+    if field not in allowed_fields:
+        raise ValueError("Invalid field")
+    
+    query = sql.SQL("""
+        UPDATE schedules
+        SET {column} = %s
+        WHERE schedule_id = %s
+    """).format(
+        column=sql.Identifier(field)   # safe injection of column name
+    )
+
+    # Pass the timestamp (or whatever type) as a parameter tuple
+    return execute_query(query, (value, schedule_id),fetch=False)

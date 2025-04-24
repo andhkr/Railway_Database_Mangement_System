@@ -18,6 +18,7 @@ FROM
 GROUP BY 
     t.train_id, t.name, start_st.name, end_st.name;
 
+-- duties view for admin
 create or replace view admin_duties_view as 
 SELECT 
     d.duty_id,
@@ -677,49 +678,176 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE OR REPLACE PROCEDURE add_ticket_on_cancel(
-    ticket_train_id INTEGER,
-    ticket_class VARCHAR
-)
-AS $$
+--add_ticket_on_cancel from waiting list
+create or replace procedure add_ticket_on_cancel(tk_id int)
+language plpgsql as $$
+declare 
+	s_date date;
+	trn_id int;
+	tmp int;
+	i record;
+	start_station varchar(100);
+	end_station varchar(100);
+begin
+	-- selecting train_id and start_date
+	select train_id, day_of_ticket::DATE into trn_id,s_date from tickets where ticket_id=tk_id;
+
+
+	-- deleting from tickets table for allotment function to work
+	delete from tickets where ticket_id=tk_id;
+	-- also need to refund the payment and delete from the payment table
+
+
+	-- common cause discussed with asad
+	select day into tmp from schedules
+	where train_id=trn_id
+	order by day desc limit 1;
+	
+	s_date:=s_date+(tmp-extract(dow from s_date)::int);
+
+
+	-- main part
+	-- iterating over all favourable entries from waiting list and if allotment function
+	-- returns something then assiging the ticket to the person and delete its entry from the waiting_list
+	
+	for i in 
+		select * from waiting_list where train_id=trn_id and day_of_ticket::date<=s_date
+		for update
+	loop
+
+		select name into start_station from stations where station_id=i.start_station_id limit 1;
+		select name into end_station from stations where station_id=i.end_station_id limit 1;
+		
+		select allot (start_station,
+					  end_station,
+					  i.class,
+					  i.train_id,
+					  i.day_of_ticket) 
+		into tmp;
+		
+
+		if tmp <> -1 then
+			insert into tickets (ticket_id,train_id,seat_id,ticket_user,day_of_ticket,start_station_id,end_station_id,passenger_id)
+			values (i.ticket_id,i.train_id,tmp,i.ticket_user,i.day_of_ticket,i.start_station_id,i.end_station_id,i.passenger_id);
+			
+			delete from waiting_list where current of i;
+		end if;
+	end loop;
+	
+
+end;
+$$;
+
+--del_ticket_log function 
+CREATE OR REPLACE FUNCTION del_ticket_log(tikt_id INT)
+RETURNS VOID
+LANGUAGE plpgsql AS $$
 DECLARE
-    seat_id INTEGER;
-    start_station VARCHAR;
-    end_station VARCHAR;
-    wt RECORD;
+    pasngr_id INTEGER;
 BEGIN
+    -- First delete payment
+    DELETE FROM payments WHERE ticket_id = tikt_id;
 
-    FOR wt IN
-        SELECT * FROM waiting_list 
-        WHERE train_id = ticket_train_id
-        AND class = ticket_class
-        ORDER BY created_at
+    -- Get passenger ID before deleting ticket
+    SELECT passenger_id INTO pasngr_id FROM tickets WHERE ticket_id = tikt_id;
+
+    -- Delete ticket
+    DELETE FROM tickets WHERE ticket_id = tikt_id;
+
+    -- Delete passenger (only if not referenced elsewhere)
+    DELETE FROM passengers WHERE passenger_id = pasngr_id;
+END;
+$$;
+
+--delete_in_ticket function
+CREATE OR REPLACE FUNCTION delete_in_ticket(trains_completed_journey INTEGER[])
+RETURNS VOID
+LANGUAGE plpgsql AS $$
+DECLARE
+    tikt_id INTEGER;
+    r RECORD;
+BEGIN
+    -- Loop through all tickets for completed trains
+    FOR r IN SELECT ticket_id FROM tickets
+            WHERE train_id = ANY(trains_completed_journey)
+              AND day_of_ticket < CURRENT_DATE
     LOOP
+        -- Call ticket deletion with logging
+        PERFORM del_ticket_log(r.ticket_id);
+    END LOOP;
 
-        select name into start_station from stations 
-        where station_id = wt.start_station_id;
+    RAISE NOTICE 'Completed ticket cleanup for % trains', array_length(trains_completed_journey, 1);
+END;
+$$;
 
-        select name into end_station from stations 
-        where station_id = wt.end_station_id;
+CREATE EXTENSION IF NOT EXISTS pg_cron;
+-- function delete_expired_ticket triggerd at every mid night
+CREATE OR REPLACE PROCEDURE delete_expired_ticket()
+LANGUAGE plpgsql AS $$
+DECLARE
+    train_ids               INTEGER[];
+    tr_id                   INTEGER;
+    t_start_station_id      INTEGER;
+    t_end_station_id        INTEGER;
+    route_start_station_id  INTEGER;
+    route_end_station_id    INTEGER;
+    journey_complete        BOOLEAN;
+    trains_completed_journey INTEGER[] := '{}';
+    prev_day                INTEGER;
+    r                       RECORD;
+BEGIN
+    -- Calculate previous day of week (0=Sunday, 6=Saturday)
+    prev_day := EXTRACT(DOW FROM NOW())::INTEGER - 1;
+    IF prev_day = -1 THEN
+        prev_day := 6;
+    END IF;
 
-        -- SELECT allot(p_start_station, p_end_station, p_class, p_train_id, p_journey_date) INTO seat_id;
-        SELECT allot(start_station, end_station, wt.class, wt.train_id, wt.day_of_ticket) INTO seat_id;
-        IF seat_id != -1 THEN
+    -- Get array of distinct train_ids from schedules where day = prev_day
+    SELECT ARRAY(SELECT DISTINCT train_id FROM schedules WHERE day = prev_day)
+      INTO train_ids;
 
-            INSERT INTO tickets (
-                ticket_id, train_id, seat_id, ticket_user, day_of_ticket, 
-                start_station_id, end_station_id, passenger_id
-            ) VALUES (
-                wt.ticket_id, wt.train_id, seat_id, wt.ticket_user, wt.day_of_ticket,
-                wt.start_station_id, wt.end_station_id, wt.passenger_id
-            );
+    -- Loop over each train_id in the array
+    FOREACH tr_id IN ARRAY train_ids LOOP
+        journey_complete := FALSE;
 
-            DELETE FROM waiting_list
-            WHERE ticket_id = wt.ticket_id;
-            
-            EXIT;
+        -- Retrieve the train's start and end station IDs
+        SELECT start_station_id, end_station_id
+          INTO t_start_station_id, t_end_station_id
+          FROM trains
+         WHERE train_id = tr_id;
 
+        -- Loop over all schedule rows (assumed to contain a route_id)
+        FOR r IN SELECT route_id FROM schedules WHERE train_id = tr_id LOOP
+            -- Retrieve route start and end station IDs from Routes table
+            SELECT start_station_id, end_station_id
+              INTO route_start_station_id, route_end_station_id
+              FROM routes
+             WHERE route_id = r.route_id;
+
+            -- Check if the route corresponds to the train's journey
+            IF route_start_station_id = t_start_station_id THEN
+                -- Found starting segment; do nothing extra
+                CONTINUE;
+            ELSIF route_end_station_id = t_end_station_id THEN
+                journey_complete := TRUE;
+                EXIT;  -- Exit inner loop once journey end is found
+            END IF;
+        END LOOP;
+
+        IF journey_complete THEN
+            trains_completed_journey := array_append(trains_completed_journey, tr_id);
+        ELSE
+            RAISE EXCEPTION 'Issue in schedules for train_id %', tr_id;
         END IF;
     END LOOP;
+
+    -- Delete expired tickets for trains that have completed their journey
+    PERFORM delete_in_ticket(trains_completed_journey);
 END;
-$$ LANGUAGE plpgsql;
+$$;
+
+SELECT cron.schedule(
+    'delete-expired-tickets',
+    '30 18 * * *',  -- 18:30 UTC = 00:00 AM IST (verify timezone!)
+    $$CALL delete_expired_ticket();$$
+);

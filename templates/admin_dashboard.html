@@ -137,12 +137,30 @@
                 <tbody>
                     {% for schedule in schedules %}
                         <tr>
-                            <td>{{ schedule.schedule_id }}</td>
-                            <td>{{ schedule.train_id }}</td>
-                            <td>{{ schedule.route_id }}</td>
-                            <td>{{ schedule.departure_time }}</td>
-                            <td>{{ schedule.arrival_time }}</td>
-                            <td>{{ schedule.day }}</td>
+                            <td data-field="schedule_id" data-id="{{ schedule.schedule_id }}">
+                                <span>{{ schedule.schedule_id }}</span>
+                                <!-- <button onclick="editCell(this)">Edit</button> -->
+                              </td>
+                              <td data-field="train_id" data-id="{{ schedule.schedule_id }}">
+                                <span>{{ schedule.train_id }}</span>
+                                <!-- <button onclick="editCell(this)">Edit</button> -->
+                              </td>
+                              <td data-field="route_id" data-id="{{ schedule.schedule_id }}">
+                                <span>{{ schedule.route_id }}</span>
+                                <button onclick="editCell(this)">Edit</button>
+                              </td>
+                              <td data-field="departure_time" data-id="{{ schedule.schedule_id }}">
+                                <span>{{ schedule.departure_time }}</span>
+                                <button onclick="editCell(this)">Edit</button>
+                              </td>
+                              <td data-field="arrival_time" data-id="{{ schedule.schedule_id }}">
+                                <span>{{ schedule.arrival_time }}</span>
+                                <button onclick="editCell(this)">Edit</button>
+                              </td>
+                              <td data-field="day" data-id="{{ schedule.schedule_id }}">
+                                <span>{{ schedule.day }}</span>
+                                <button onclick="editCell(this)">Edit</button>
+                              </td>
                         </tr>
                     {% else %}
                         <tr>
@@ -339,5 +357,50 @@
             window.location.href = "{{ url_for('delete_duty') }}?id=" + id;
         }
     }
+
+    function editCell(button) {
+        const cell = button.parentElement;
+        const valueSpan = cell.querySelector('span');
+        const currentValue = valueSpan.innerText;
+
+        // Replace with input and save
+        cell.innerHTML = `
+            <input type="text" value="${currentValue}">
+            <button onclick="saveCell(this)">Save</button>
+            <button onclick="cancelCell(this, '${currentValue}')">Cancel</button>
+        `;
+    }
+
+    function saveCell(button) {
+        const cell = button.parentElement;
+        const input = cell.querySelector('input');
+        const newValue = input.value;
+        const field = cell.dataset.field;
+        const id = cell.dataset.id;
+
+        fetch('/update_schedule_field', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+            schedule_id: id,
+            field: field,
+            value: newValue
+            })
+        }).then(res => res.json())
+            .then(data => {
+            if (data.success) {
+                cell.innerHTML = `<span>${newValue}</span> <button onclick="editCell(this)">Edit</button>`;
+            } else {
+                alert("Failed to update.");
+            }
+            });
+    }
+
+    function cancelCell(button, originalValue) {
+        const cell = button.parentElement;
+        const field = cell.dataset.field;
+        cell.innerHTML = `<span>${originalValue}</span> <button onclick="editCell(this)">Edit</button>`;
+    }
+
 </script>
 {% endblock %}

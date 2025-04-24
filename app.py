@@ -9,7 +9,7 @@ from models.database import (
     search_available_trains, book_new_ticket, get_ticket_status,
     cancel_user_ticket, get_user_bookings, get_admin_train_overview,
     get_employee_duties, get_all_stations, get_train_classes, add_passenger,get_db_connection,initialize_connection_pool,check_db_connection,
-    release_db_connection,session_role_id,get_connection_for_request,get_employee_table,get_schedules_table,get_duties_overview
+    release_db_connection,session_role_id,get_connection_for_request,get_employee_table,get_schedules_table,get_duties_overview,update_schedule
 )
 from config import SECRET_KEY
 import json
@@ -47,31 +47,39 @@ def initialize_database():
     cur = conn.cursor()
 
     try:
-        # Get all SQL files from the sql_scripts directory
-        # Assuming you have a directory called sql_scripts in your project root
-        sql_files = sorted(glob.glob('sql_scripts/*.sql'))
+        # # Get all SQL files from the sql_scripts directory
+        # # Assuming you have a directory called sql_scripts in your project root
+        # sql_files = sorted(glob.glob('sql_scripts/*.sql'))
 
-        print(f"Found {len(sql_files)} SQL files to execute")
+        # print(f"Found {len(sql_files)} SQL files to execute")
 
-        for sql_file in sql_files:
-            print(f"Executing {sql_file}...")
-            try:
-                with open(sql_file, 'r') as f:
-                    sql_script = f.read()
-                    cur.execute(sql_script)
-                print(f"Successfully executed {sql_file}")
-            except Exception as e:
-                print(f"Error executing {sql_file}: {e}")
+        # for sql_file in sql_files:
+        #     print(f"Executing {sql_file}...")
+        #     try:
+        #         with open(sql_file, 'r') as f:
+        #             sql_script = f.read()
+        #             cur.execute(sql_script)
+        #         print(f"Successfully executed {sql_file}")
+        #     except Exception as e:
+        #         print(f"Error executing {sql_file}: {e}")
         
-        cur.execute("SELECT user_id, password FROM users")
-        users = cur.fetchall()
+        # cur.execute("SELECT user_id, password FROM users")
+        # users = cur.fetchall()
         
-        # Update each user's password with a hashed version
-        for user_id, plain_password in users:
-            hashed_password = generate_password_hash(plain_password)
-            cur.execute(
-                "UPDATE users SET password = %s WHERE user_id = %s",
-                (hashed_password, user_id)
+        # # Update each user's password with a hashed version
+        # for user_id, plain_password in users:
+        #     hashed_password = generate_password_hash(plain_password)
+        #     cur.execute(
+        #         "UPDATE users SET password = %s WHERE user_id = %s",
+        #         (hashed_password, user_id)
+        #     )
+        hashed_password = generate_password_hash("admin123")
+        cur.execute(
+                """
+                INSERT INTO users (user_id,username,password,role_id)VALUES
+                (%s,%s,%s,%s)
+                """,
+                (4,'admin1',hashed_password,1)
             )
         conn.commit()
         print("Database initialization completed successfully")
@@ -588,6 +596,24 @@ def delete_duty():
             release_db_connection(conn)
 
     return redirect(url_for('admin_dashboard'))
+
+@app.route('/update_schedule_field', methods=['POST'])
+def update_schedule_field():
+    data = request.get_json()
+    schedule_id = data['schedule_id']
+    field = data['field']
+    value = data['value']
+
+    try:
+        # Update only the specific field in DB
+        print("nyo")
+        update_schedule(schedule_id, field, value)  # implement this function
+        print("nyo")
+        return jsonify(success=True)
+    except Exception as e:
+        print("Error updating field:", e)
+        return jsonify(success=False), 500
+
 if __name__ == '__main__':
-    initialize_database()
+    # initialize_database()
     app.run(debug=True)

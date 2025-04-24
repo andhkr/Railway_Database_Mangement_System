@@ -50,12 +50,12 @@
 -- payments,audit_logs
 -- to user_role;
 
--- grant insert on Passengers,tickets,waiting_list,
+-- grant insert on Passengers,tickets,waiting_list,users,
 -- payments,audit_logs
 -- to user_role;
 
 -- GRANT USAGE, SELECT
--- ON SEQUENCE passengers_passenger_id_seq,audit_logs_log_id_seq,shared_ticket_id
+-- ON SEQUENCE passengers_passenger_id_seq,audit_logs_log_id_seq,shared_ticket_id,payments_payment_id_seq
 -- TO user_role;
 
 -- grant select on fare_per_km,Stations,Routes,Employees,users,
@@ -63,12 +63,12 @@
 -- payments,audit_logs
 -- to employee_role;
 
--- grant insert on Passengers,tickets,waiting_list,
+-- grant insert on Passengers,tickets,waiting_list,users,
 -- payments,audit_logs
 -- to employee_role;
 
 -- GRANT USAGE, SELECT
--- ON SEQUENCE passengers_passenger_id_seq,audit_logs_log_id_seq,shared_ticket_id
+-- ON SEQUENCE passengers_passenger_id_seq,audit_logs_log_id_seq,shared_ticket_id,payments_payment_id_seq
 -- TO employee_role;
 
 

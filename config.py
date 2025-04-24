@@ -14,7 +14,7 @@ DB_PORT = os.getenv('SUPABASE_DB_PORT', '5432')
 
 # Connection pool configuration
 DB_POOL_MIN_CONN = int(os.getenv('DB_POOL_MIN_CONN', '1'))
-DB_POOL_MAX_CONN = int(os.getenv('DB_POOL_MAX_CONN', '10'))
+DB_POOL_MAX_CONN = int(os.getenv('DB_POOL_MAX_CONN', '20'))
 
 # Database connection string (with SSL mode for Supabase)
 DATABASE_URI = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
