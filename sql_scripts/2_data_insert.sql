@@ -189,16 +189,16 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-SELECT insert_seats(1, 600);
-SELECT insert_seats(2, 600);
-SELECT insert_seats(3, 750);
-SELECT insert_seats(4, 750);
-SELECT insert_seats(5, 550);
-SELECT insert_seats(6, 800);
-SELECT insert_seats(7, 900);
-SELECT insert_seats(8, 650);
-SELECT insert_seats(9, 720);
-SELECT insert_seats(10, 880);
+SELECT insert_seats(1, 5);
+SELECT insert_seats(2, 5);
+SELECT insert_seats(3, 5);
+SELECT insert_seats(4, 5);
+SELECT insert_seats(5, 5);
+SELECT insert_seats(6, 5);
+SELECT insert_seats(7, 5);
+SELECT insert_seats(8, 5);
+SELECT insert_seats(9, 5);
+SELECT insert_seats(10, 5);
 
 -----------------------------
 -- 8. Passengers & Tickets (10+ entries)
@@ -226,7 +226,7 @@ INSERT INTO users (user_id,username,password,role_id)VALUES
 -- --1 2 9 4
 -- (1,1,1,'2023-10-01 14:00',1,4,1), -- Mumbai-Delhi
 -- (1,3,2,'2023-10-02 09:30',1,9,2), -- Mumbai-Chennai
--- --9 1 11 12 7
+-- --9 1 12 11 7
 -- (5,7,3,'2023-10-02 09:30',1,12,3), -- Mumbai-Chennai
 -- --9 6 15 4
 -- (10,5,4,'2023-10-02 09:30',9,6,4), -- Mumbai-Chennai

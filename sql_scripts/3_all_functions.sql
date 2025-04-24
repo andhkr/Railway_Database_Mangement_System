@@ -680,7 +680,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 --add_ticket_on_cancel from waiting list
-create or replace procedure add_ticket_on_cancel(tk_id int)
+create or replace procedure add_ticket_on_cancel(train_id_arg int, day_of_ticket_arg date)
 language plpgsql as $$
 declare 
 	s_date date;
@@ -690,30 +690,22 @@ declare
 	start_station varchar(100);
 	end_station varchar(100);
 begin
-	-- selecting train_id and start_date
-	select train_id, day_of_ticket::DATE into trn_id,s_date from tickets where ticket_id=tk_id;
 
+	-- select train_id, day_of_ticket::DATE into trn_id,s_date from tickets where ticket_id=tk_id;
 
-	-- deleting from tickets table for allotment function to work
-	delete from tickets where ticket_id=tk_id;
-	-- also need to refund the payment and delete from the payment table
+    trn_id := train_id_arg;
+    s_date := day_of_ticket_arg;
 
-
-	-- common cause discussed with asad
 	select day into tmp from schedules
 	where train_id=trn_id
 	order by day desc limit 1;
 	
 	s_date:=s_date+(tmp-extract(dow from s_date)::int);
 
-
-	-- main part
-	-- iterating over all favourable entries from waiting list and if allotment function
-	-- returns something then assiging the ticket to the person and delete its entry from the waiting_list
+    -- insert into debug_log(msg) values(s_date::text);
 	
 	for i in 
 		select * from waiting_list where train_id=trn_id and day_of_ticket::date<=s_date
-		for update
 	loop
 
 		select name into start_station from stations where station_id=i.start_station_id limit 1;
@@ -731,10 +723,12 @@ begin
 			insert into tickets (ticket_id,train_id,seat_id,ticket_user,day_of_ticket,start_station_id,end_station_id,passenger_id)
 			values (i.ticket_id,i.train_id,tmp,i.ticket_user,i.day_of_ticket,i.start_station_id,i.end_station_id,i.passenger_id);
 			
-			delete from waiting_list where current of i;
+			delete from waiting_list where ticket_id=i.ticket_id;
 		end if;
-	end loop;
-	
+
+        -- insert into debug_log(msg) values(tmp::text);
+
+    end loop;	
 
 end;
 $$;
