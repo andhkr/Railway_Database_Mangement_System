@@ -226,7 +226,7 @@ INSERT INTO users (user_id,username,password,role_id)VALUES
 -- --1 2 9 4
 -- (1,1,1,'2023-10-01 14:00',1,4,1), -- Mumbai-Delhi
 -- (1,3,2,'2023-10-02 09:30',1,9,2), -- Mumbai-Chennai
--- --9 1 11 12 7
+-- --9 1 12 11 7
 -- (5,7,3,'2023-10-02 09:30',1,12,3), -- Mumbai-Chennai
 -- --9 6 15 4
 -- (10,5,4,'2023-10-02 09:30',9,6,4), -- Mumbai-Chennai

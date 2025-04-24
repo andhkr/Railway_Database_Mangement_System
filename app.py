@@ -242,8 +242,8 @@ def search_trains():
     
     return render_template('search_trains.html', stations=stations, train_classes=train_classes)
 
-@app.route('/book-ticket/<int:train_id>', methods=['GET', 'POST'])
-@app.route('/book_ticket/<int:train_id>', methods=['GET', 'POST'])
+# @app.route('/book-ticket/<int:train_id>', methods=['GET', 'POST'])
+# @app.route('/book_ticket/<int:train_id>', methods=['GET', 'POST'])
 @app.route('/book_ticket/<int:train_id>', methods=['GET', 'POST'])
 def book_ticket(train_id):
     """Ticket booking route"""
@@ -615,5 +615,5 @@ def update_schedule_field():
         return jsonify(success=False), 500
 
 if __name__ == '__main__':
-    initialize_database()
+    # initialize_database()
     app.run(debug=True)

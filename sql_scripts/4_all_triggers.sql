@@ -3,7 +3,7 @@ CREATE OR REPLACE FUNCTION ticket_cancel_trigger()
 RETURNS TRIGGER AS $$
 BEGIN
 
-    CALL add_ticket_on_cancel(OLD.ticket_id);    
+    CALL add_ticket_on_cancel(OLD.train_id, OLD.day_of_ticket::date);    
     RETURN NULL;
 
 END;
