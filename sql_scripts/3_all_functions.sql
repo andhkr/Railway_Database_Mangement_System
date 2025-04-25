@@ -32,38 +32,49 @@ JOIN
 ORDER BY 
     d.duty_id;
 
--- -- convert this to function so that each pemployee can only see thier duty
+-- -- convert this to function so that each employee can only see thier duty
     
-create or replace function employee_duties(empl_id int)
-returns table(employee_id int, employee_name varchar(100),role varchar(50), duty_id int, schedule_id int,
-departure_time time,arrival_time time,day int, train_name varchar(100), departure_station varchar(100),
-arrival_station varchar(100))
-
-language plpgsql as $$
-begin
-	return query
-SELECT 
-    e.employee_id,
-    e.name AS employee_name,
-    e.role,
-    d.duty_id,
-    unnest(d.schedule_ids) AS schedule_id,
-    s.departure_time,
-    s.arrival_time,
-    s.day,
-    t.name AS train_name,
-    start_st.name AS departure_station,
-    end_st.name AS arrival_station
-FROM 
-    employees e
-    JOIN duties d ON e.employee_id = d.employee_id
-    JOIN schedules s ON s.schedule_id = ANY(d.schedule_ids)
-    JOIN trains t ON s.train_id = t.train_id
-    JOIN routes r ON s.route_id = r.route_id
-    JOIN stations start_st ON r.start_station_id = start_st.station_id
-    JOIN stations end_st ON r.end_station_id = end_st.station_id
-	where e.employee_id=empl_id;
-end;
+CREATE OR REPLACE FUNCTION employee_duties(empl_id int) 
+RETURNS TABLE(
+    employee_id int, 
+    employee_name varchar(100),
+    role varchar(50), 
+    duty_id int, 
+    schedule_id int, 
+    departure_time time,
+    arrival_time time,
+    day int, 
+    train_name varchar(100), 
+    departure_station varchar(100), 
+    arrival_station varchar(100)
+) 
+LANGUAGE plpgsql AS $$
+BEGIN
+    RETURN QUERY 
+    SELECT
+        e.employee_id,
+        e.name AS employee_name,
+        e.role,
+        d.duty_id,
+        s.schedule_id,
+        s.departure_time,
+        s.arrival_time,
+        s.day,
+        t.name AS train_name,
+        start_st.name AS departure_station,
+        end_st.name AS arrival_station
+    FROM
+        employees e
+        JOIN duties d ON e.employee_id = d.employee_id
+        JOIN LATERAL unnest(d.schedule_ids) AS unnested_schedule_id(schedule_id) ON true
+        JOIN schedules s ON s.schedule_id = unnested_schedule_id.schedule_id
+        JOIN trains t ON s.train_id = t.train_id
+        JOIN routes r ON s.route_id = r.route_id
+        JOIN stations start_st ON r.start_station_id = start_st.station_id
+        JOIN stations end_st ON r.end_station_id = end_st.station_id
+    WHERE
+        e.employee_id = empl_id;
+END;
 $$;
 
 -- User view for bookings (tickets and waitlist) function
@@ -375,47 +386,46 @@ BEGIN
     END IF;
 
     call pay(new_ticket_id);
-    commit;
     RETURN new_ticket_id;
 END;
 $$;
 
--- Function to get user's tickets
-CREATE OR REPLACE FUNCTION get_user_tickets(p_user_id INTEGER)
-RETURNS TABLE (
-    ticket_id INTEGER,
-    status VARCHAR,
-    train_name VARCHAR,
-    start_station VARCHAR,
-    end_station VARCHAR,
-    journey_date TIMESTAMP,
-    class VARCHAR,
-    seat_info VARCHAR,
-    amount DECIMAL(10,2)
-)
-LANGUAGE plpgsql AS $$
-BEGIN
-    RETURN QUERY
-    SELECT
-        b.ticket_id,
-        b.status,
-        b.train_name,
-        b.boarding_station,
-        b.destination_station,
-        b.journey_date,
-        b.class,
-        CASE WHEN b.status = 'Confirmed' 
-             THEN CONCAT(b.boggie, '-', b.seat_num, ' (', b.berth, ')')
-             ELSE 'Waiting' END AS seat_info,
-        b.paid_amount
-    FROM
-        user_bookings b
-    WHERE
-        b.user_id = p_user_id
-    ORDER BY
-        b.journey_date;
-END;
-$$;
+-- -- Function to get user's tickets
+-- CREATE OR REPLACE FUNCTION get_user_tickets(p_user_id INTEGER)
+-- RETURNS TABLE (
+--     ticket_id INTEGER,
+--     status VARCHAR,
+--     train_name VARCHAR,
+--     start_station VARCHAR,
+--     end_station VARCHAR,
+--     journey_date TIMESTAMP,
+--     class VARCHAR,
+--     seat_info VARCHAR,
+--     amount DECIMAL(10,2)
+-- )
+-- LANGUAGE plpgsql AS $$
+-- BEGIN
+--     RETURN QUERY
+--     SELECT
+--         b.ticket_id,
+--         b.status,
+--         b.train_name,
+--         b.boarding_station,
+--         b.destination_station,
+--         b.journey_date,
+--         b.class,
+--         CASE WHEN b.status = 'Confirmed' 
+--              THEN CONCAT(b.boggie, '-', b.seat_num, ' (', b.berth, ')')
+--              ELSE 'Waiting' END AS seat_info,
+--         b.paid_amount
+--     FROM
+--         user_bookings b
+--     WHERE
+--         b.user_id = p_user_id
+--     ORDER BY
+--         b.journey_date;
+-- END;
+-- $$;
 
 -- Function to cancel ticket
 CREATE OR REPLACE FUNCTION cancel_ticket(
@@ -427,6 +437,7 @@ LANGUAGE plpgsql AS $$
 DECLARE
     ticket_exists BOOLEAN;
     is_waiting BOOLEAN;
+    pasngr_id INTEGER;
 BEGIN
     -- Check if ticket exists and belongs to user
     SELECT EXISTS (
@@ -448,7 +459,11 @@ BEGIN
     
     IF is_waiting THEN
         -- Simply remove from waiting list
+        -- Get passenger ID before deleting ticket
+        SELECT passenger_id INTO pasngr_id FROM waiting_list WHERE ticket_id = p_ticket_id;
         DELETE FROM waiting_list WHERE ticket_id = p_ticket_id;
+        delete from payments where ticket_id = p_ticket_id;
+        delete from passengers where passenger_id = pasngr_id;
         RETURN TRUE;
     END IF;
     
@@ -733,26 +748,26 @@ begin
 end;
 $$;
 
---del_ticket_log function 
-CREATE OR REPLACE FUNCTION del_ticket_log(tikt_id INT)
-RETURNS VOID
-LANGUAGE plpgsql AS $$
-DECLARE
-    pasngr_id INTEGER;
-BEGIN
-    -- First delete payment
-    DELETE FROM payments WHERE ticket_id = tikt_id;
+--del_ticket_log function  unused
+-- CREATE OR REPLACE FUNCTION del_ticket_log(tikt_id INT)
+-- RETURNS VOID
+-- LANGUAGE plpgsql AS $$
+-- DECLARE
+--     pasngr_id INTEGER;
+-- BEGIN
+--     -- First delete payment
+--     DELETE FROM payments WHERE ticket_id = tikt_id;
 
-    -- Get passenger ID before deleting ticket
-    SELECT passenger_id INTO pasngr_id FROM tickets WHERE ticket_id = tikt_id;
+--     -- Get passenger ID before deleting ticket
+--     SELECT passenger_id INTO pasngr_id FROM tickets WHERE ticket_id = tikt_id;
 
-    -- Delete ticket
-    DELETE FROM tickets WHERE ticket_id = tikt_id;
+--     -- Delete ticket
+--     DELETE FROM tickets WHERE ticket_id = tikt_id;
 
-    -- Delete passenger (only if not referenced elsewhere)
-    DELETE FROM passengers WHERE passenger_id = pasngr_id;
-END;
-$$;
+--     -- Delete passenger (only if not referenced elsewhere)
+--     DELETE FROM passengers WHERE passenger_id = pasngr_id;
+-- END;
+-- $$;
 
 --delete_in_ticket function
 CREATE OR REPLACE FUNCTION delete_in_ticket(trains_completed_journey INTEGER[])
@@ -798,7 +813,7 @@ BEGIN
     END IF;
 
     -- Get array of distinct train_ids from schedules where day = prev_day
-    SELECT ARRAY(SELECT DISTINCT train_id FROM schedules WHERE day = prev_day)
+    SELECT ARRAY(SELECT DISTINCT train_id FROM schedules WHERE day <= prev_day)
       INTO train_ids;
 
     -- Loop over each train_id in the array
@@ -812,7 +827,7 @@ BEGIN
          WHERE train_id = tr_id;
 
         -- Loop over all schedule rows (assumed to contain a route_id)
-        FOR r IN SELECT route_id FROM schedules WHERE train_id = tr_id LOOP
+        FOR r IN SELECT route_id FROM schedules WHERE train_id = tr_id and day<=prev_day LOOP
             -- Retrieve route start and end station IDs from Routes table
             SELECT start_station_id, end_station_id
               INTO route_start_station_id, route_end_station_id
