@@ -770,22 +770,31 @@ $$;
 -- $$;
 
 --delete_in_ticket function
-CREATE OR REPLACE FUNCTION delete_in_ticket(trains_completed_journey INTEGER[])
+CREATE OR REPLACE FUNCTION deletetickets(trains_completed_journey INTEGER[])
 RETURNS VOID
 LANGUAGE plpgsql AS $$
 DECLARE
     tikt_id INTEGER;
     r RECORD;
+    pasngr_id integer;
 BEGIN
     -- Loop through all tickets for completed trains
     FOR r IN SELECT ticket_id FROM tickets
-            WHERE train_id = ANY(trains_completed_journey)
-              AND day_of_ticket < CURRENT_DATE
+             WHERE train_id = ANY(trains_completed_journey)
+             AND day_of_ticket < CURRENT_DATE
     LOOP
-        -- Call ticket deletion with logging
-        PERFORM del_ticket_log(r.ticket_id);
+        delete from tickets where ticket_id = r.ticket_id;
     END LOOP;
 
+    FOR r IN SELECT ticket_id FROM waiting_list
+             WHERE train_id = ANY(trains_completed_journey)
+             AND day_of_ticket < CURRENT_DATE
+    LOOP
+        DELETE FROM payments WHERE ticket_id = r.ticket_id;
+        SELECT passenger_id INTO pasngr_id FROM tickets WHERE ticket_id = r.ticket_id;
+        DELETE FROM waiting_list WHERE ticket_id = r.ticket_id;
+        DELETE FROM passengers WHERE passenger_id = pasngr_id;
+    END LOOP;
     RAISE NOTICE 'Completed ticket cleanup for % trains', array_length(trains_completed_journey, 1);
 END;
 $$;
@@ -861,3 +870,62 @@ SELECT cron.schedule(
     '30 18 * * *',  -- 18:30 UTC = 00:00 AM IST (verify timezone!)
     $$CALL delete_expired_ticket();$$
 );
+
+CREATE OR REPLACE FUNCTION insert_seats(
+  train_id_param INTEGER,
+  total_seats INTEGER
+) RETURNS VOID AS $$
+DECLARE
+  seats_per_class INTEGER;
+  next_seat_id INTEGER;
+  class_name TEXT;
+  boggie_prefix TEXT;
+  boggie_num INTEGER;
+  seat_in_boggie INTEGER;
+  berth_type TEXT;
+  seat_num TEXT;
+BEGIN
+
+  seats_per_class := total_seats / 5;
+  SELECT COALESCE(MAX(seat_id), 0) + 1 INTO next_seat_id FROM Seats;
+  
+  FOR class_index IN 1..5 LOOP
+
+    CASE class_index
+      WHEN 1 THEN class_name := 'First AC'; boggie_prefix := 'A1';
+      WHEN 2 THEN class_name := 'Second AC'; boggie_prefix := 'A2';
+      WHEN 3 THEN class_name := 'Third AC'; boggie_prefix := 'B';
+      WHEN 4 THEN class_name := 'Sleeper'; boggie_prefix := 'S';
+      WHEN 5 THEN class_name := 'General'; boggie_prefix := 'G';
+    END CASE;
+    
+    FOR i IN 1..seats_per_class LOOP
+      boggie_num := (i - 1) / 12 + 1;
+      seat_in_boggie := ((i - 1) % 12) + 1;
+      
+      CASE (i - 1) % 6
+        WHEN 0 THEN berth_type := 'Lower';
+        WHEN 1 THEN berth_type := 'Middle';
+        WHEN 2 THEN berth_type := 'Upper';
+        WHEN 3 THEN berth_type := 'Side Lower';
+        WHEN 4 THEN berth_type := 'Side Upper';
+        WHEN 5 THEN berth_type := 'Side Middle';
+      END CASE;
+      
+      IF class_index <= 2 THEN
+        seat_num := boggie_prefix || '-' || LPAD(seat_in_boggie::TEXT, 2, '0');
+      ELSE
+        seat_num := boggie_prefix || boggie_num || '-' || LPAD(seat_in_boggie::TEXT, 2, '0');
+      END IF;
+      
+      INSERT INTO Seats (seat_id, train_id, seat_num, boggie, berth, class)
+      VALUES (next_seat_id, train_id_param, seat_num::varchar(20), 
+          CASE WHEN class_index <= 2 THEN boggie_prefix 
+             ELSE (boggie_prefix || boggie_num::TEXT)::varchar(20) END,
+          berth_type::varchar(20), class_name::varchar(20));
+      
+      next_seat_id := next_seat_id + 1;
+    END LOOP;
+  END LOOP;
+END;
+$$ LANGUAGE plpgsql;

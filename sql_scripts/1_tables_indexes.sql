@@ -192,10 +192,9 @@ CREATE TABLE audit_logs (
     table_name VARCHAR(50) NOT NULL,
     operation VARCHAR(10) NOT NULL,
     record_id INTEGER NOT NULL,
-    changed_by INTEGER REFERENCES users(user_id),
     changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    old_data JSONB,
-    new_data JSONB
+    -- old_data JSONB,
+    -- new_data JSONB
 );
 
 -- Add indexes for frequently queried columns

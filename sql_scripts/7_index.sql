@@ -41,10 +41,10 @@ CREATE INDEX idx_schedules_route ON schedules(route_id);                        
 CREATE INDEX idx_users_username ON users using HASH(username);                          -- for effecient lookups during login
 
 -- payments
-CREATE INDEX idx_payments_ticket ON payments using HASH(ticket_id);                      s-- for deletion of payments table given ticket_id on ticket cancel
+CREATE INDEX idx_payments_ticket ON payments using HASH(ticket_id);                      -- for deletion of payments table given ticket_id on ticket cancel
 
 --stations
-CREATE INDEX idx_stations_station_name on Stations using HASH(name);
+CREATE INDEX idx_stations_station_name on Stations using HASH(name);                 --- used by search_trains function
 -- additional indexes can be used inside events
 -- CREATE INDEX idx_active_tickets ON tickets(train_id, seat_id)
 -- WHERE day_of_ticket >= CURRENT_DATE;
