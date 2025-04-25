@@ -100,8 +100,42 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+
+
 CREATE TRIGGER trigger_validate_ticket_id
 BEFORE INSERT ON payments
 FOR EACH ROW
 EXECUTE FUNCTION validate_ticket_id_exists();
 
+CREATE OR REPLACE FUNCTION validate_ticket_id_exists()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM tickets WHERE ticket_id = NEW.ticket_id) THEN
+        RETURN NEW;
+    ELSIF EXISTS (SELECT 1 FROM waiting_list WHERE ticket_id = NEW.ticket_id) THEN
+        RETURN NEW;
+    ELSE
+        RAISE EXCEPTION 'Invalid ticket_id: % not found in tickets or waiting_list', NEW.ticket_id;
+    END IF;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trigger_validate_ticket_id
+BEFORE INSERT ON payments
+FOR EACH ROW
+EXECUTE FUNCTION validate_ticket_id_exists();
+
+
+create or replace function delete_ticket_info()
+returns trigger as $$
+begin
+  delete from payments where ticket_id = OLD.ticket_id;
+  delete from passengers where passenger_id = OLD.passenger_id;
+  return OLD;
+end;
+$$ language plpgsql;
+
+create trigger trigger_delete_ticket_info
+after delete on tickets
+for each row 
+execute function delete_ticket_info(); 

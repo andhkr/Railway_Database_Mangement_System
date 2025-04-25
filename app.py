@@ -49,39 +49,47 @@ def initialize_database():
     try:
         # Get all SQL files from the sql_scripts directory
         # Assuming you have a directory called sql_scripts in your project root
-        sql_files = sorted(glob.glob('sql_scripts/*.sql'))
+        # sql_files = sorted(glob.glob('sql_scripts/*.sql'))
 
-        print(f"Found {len(sql_files)} SQL files to execute")
+        # print(f"Found {len(sql_files)} SQL files to execute")
 
-        for sql_file in sql_files:
-            print(f"Executing {sql_file}...")
-            try:
-                with open(sql_file, 'r') as f:
-                    sql_script = f.read()
-                    cur.execute(sql_script)
-                print(f"Successfully executed {sql_file}")
-            except Exception as e:
-                print(f"Error executing {sql_file}: {e}")
+        # for sql_file in sql_files:
+        #     print(f"Executing {sql_file}...")
+        #     try:
+        #         with open(sql_file, 'r') as f:
+        #             sql_script = f.read()
+        #             cur.execute(sql_script)
+        #         print(f"Successfully executed {sql_file}")
+        #     except Exception as e:
+        #         print(f"Error executing {sql_file}: {e}")
         
-        cur.execute("SELECT user_id, password FROM users")
-        users = cur.fetchall()
+        # cur.execute("SELECT user_id, password FROM users")
+        # users = cur.fetchall()
         
-        # Update each user's password with a hashed version
-        for user_id, plain_password in users:
-            hashed_password = generate_password_hash(plain_password)
-            cur.execute(
-                "UPDATE users SET password = %s WHERE user_id = %s",
-                (hashed_password, user_id)
-            )
-        # hashed_password = generate_password_hash("admin123")
+        # # Update each user's password with a hashed version
+        # for user_id, plain_password in users:
+        #     hashed_password = generate_password_hash(plain_password)
+        #     cur.execute(
+        #         "UPDATE users SET password = %s WHERE user_id = %s",
+        #         (hashed_password, user_id)
+        #     )
+        # hashed_password = generate_password_hash("rajesh1")
         # cur.execute(
         #         """
         #         INSERT INTO users (user_id,username,password,role_id)VALUES
         #         (%s,%s,%s,%s)
         #         """,
-        #         (4,'admin1',hashed_password,1)
+        #         (8,'_rajesh',hashed_password,2)
         #     )
-        conn.commit()
+        # hashed_password = generate_password_hash("priya2")
+        # cur.execute(
+        #         """
+        #         INSERT INTO users (user_id,username,password,role_id)VALUES
+        #         (%s,%s,%s,%s)
+        #         """,
+        #         (9,'_priya',hashed_password,2)
+        #     )
+        # conn.commit()
         print("Database initialization completed successfully")
     except Exception as e:
         # Roll back on error
